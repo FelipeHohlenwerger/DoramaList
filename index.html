@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#16131a" />
+<title>Folhas — Diário de Doramas</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-mark">葉</span>
+      <div class="brand-text">
+        <h1>Folhas</h1>
+        <p>seu diário de doramas</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="btn-config" aria-label="Configurações" title="Configurações">⚙</button>
+  </header>
+
+  <!-- ===================== BUSCA / ADICIONAR ===================== -->
+  <section class="busca-bar">
+    <div class="busca-input-wrap">
+      <input type="text" id="campo-busca" placeholder="Buscar dorama, filme, série..." autocomplete="off" />
+      <button id="btn-limpar-busca" class="btn-limpar oculto" aria-label="Limpar busca">×</button>
+    </div>
+    <button class="btn-secundario" id="btn-add-manual">+ Cadastrar</button>
+  </section>
+
+  <div id="resultados-busca" class="resultados-busca oculto"></div>
+
+  <!-- ===================== FILTROS ===================== -->
+  <nav class="filtros-status" id="filtros-status">
+    <button class="chip chip-status ativo" data-status="todos">Todos</button>
+    <button class="chip chip-status" data-status="quero_assistir">Quero assistir</button>
+    <button class="chip chip-status" data-status="assistindo">Assistindo</button>
+    <button class="chip chip-status" data-status="assistido">Assistido</button>
+  </nav>
+
+  <div class="filtros-secundarios">
+    <select id="filtro-genero" class="select-genero">
+      <option value="">Todas as categorias</option>
+    </select>
+    <select id="filtro-tipo" class="select-genero">
+      <option value="">Filme e série</option>
+      <option value="serie">Só séries</option>
+      <option value="filme">Só filmes</option>
+    </select>
+    <select id="filtro-ordenacao" class="select-genero">
+      <option value="recente">Mais recentes</option>
+      <option value="alfabetica">A–Z</option>
+      <option value="nota">Melhor avaliados</option>
+      <option value="ano">Ano de lançamento</option>
+    </select>
+  </div>
+
+  <!-- ===================== LISTA PRINCIPAL ===================== -->
+  <main id="lista-principal" class="grid-titulos"></main>
+
+  <div id="estado-vazio" class="estado-vazio oculto">
+    <p class="estado-vazio-titulo">Nada por aqui ainda</p>
+    <p class="estado-vazio-texto">Busque um título acima ou cadastre manualmente para começar sua lista.</p>
+  </div>
+
+</div>
+
+<!-- ===================== MODAL: DETALHES DO TÍTULO ===================== -->
+<div class="modal-overlay oculto" id="modal-detalhes">
+  <div class="modal-card modal-detalhes-card">
+    <button class="modal-fechar" data-fechar="modal-detalhes">×</button>
+    <div id="detalhes-conteudo"></div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CADASTRO MANUAL ===================== -->
+<div class="modal-overlay oculto" id="modal-manual">
+  <div class="modal-card">
+    <button class="modal-fechar" data-fechar="modal-manual">×</button>
+    <h2 class="modal-titulo">Cadastrar título</h2>
+    <form id="form-manual">
+      <input type="hidden" id="manual-id" />
+
+      <label class="campo">
+        <span>Tipo</span>
+        <select id="manual-tipo" required>
+          <option value="serie">Série</option>
+          <option value="filme">Filme</option>
+        </select>
+      </label>
+
+      <label class="campo">
+        <span>Título</span>
+        <input type="text" id="manual-titulo" required placeholder="Ex: Vincenzo" />
+      </label>
+
+      <label class="campo">
+        <span>Título original (opcional)</span>
+        <input type="text" id="manual-titulo-original" placeholder="Ex: 빈센조" />
+      </label>
+
+      <div class="campo-linha">
+        <label class="campo">
+          <span>Ano</span>
+          <input type="number" id="manual-ano" min="1950" max="2100" placeholder="2024" />
+        </label>
+        <label class="campo" id="campo-episodios">
+          <span>Nº de episódios</span>
+          <input type="number" id="manual-episodios" min="1" placeholder="16" />
+        </label>
+      </div>
+
+      <label class="campo">
+        <span>Categorias / gêneros (separe por vírgula)</span>
+        <input type="text" id="manual-generos" placeholder="Romance, Comédia, Drama" />
+      </label>
+
+      <label class="campo">
+        <span>Sinopse</span>
+        <textarea id="manual-sinopse" rows="3" placeholder="Sobre o que é..."></textarea>
+      </label>
+
+      <label class="campo">
+        <span>URL do poster (opcional)</span>
+        <input type="url" id="manual-poster" placeholder="https://..." />
+      </label>
+
+      <label class="campo">
+        <span>Status</span>
+        <select id="manual-status">
+          <option value="quero_assistir">Quero assistir</option>
+          <option value="assistindo">Assistindo</option>
+          <option value="assistido">Assistido</option>
+        </select>
+      </label>
+
+      <div class="modal-acoes">
+        <button type="button" class="btn-secundario" data-fechar="modal-manual">Cancelar</button>
+        <button type="submit" class="btn-primario">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CONFIGURAÇÕES ===================== -->
+<div class="modal-overlay oculto" id="modal-config">
+  <div class="modal-card">
+    <button class="modal-fechar" data-fechar="modal-config">×</button>
+    <h2 class="modal-titulo">Configurações</h2>
+
+    <div class="config-secao">
+      <h3>API do TMDB</h3>
+      <p class="config-texto">Cole sua chave de API (v3) do themoviedb.org para poder buscar e importar títulos automaticamente.</p>
+      <label class="campo">
+        <span>Chave da API</span>
+        <input type="text" id="config-api-key" placeholder="Sua API key do TMDB" />
+      </label>
+      <button class="btn-primario" id="btn-salvar-api-key">Salvar chave</button>
+      <p id="status-api-key" class="config-status"></p>
+    </div>
+
+    <div class="config-secao">
+      <h3>Backup</h3>
+      <p class="config-texto">Exporte seus dados para um arquivo, ou importe um backup salvo anteriormente.</p>
+      <div class="config-acoes-linha">
+        <button class="btn-secundario" id="btn-exportar">Exportar backup (.json)</button>
+        <button class="btn-secundario" id="btn-importar">Importar backup</button>
+      </div>
+      <input type="file" id="input-importar-arquivo" accept=".json" class="oculto" />
+      <p id="status-backup" class="config-status"></p>
+    </div>
+
+    <div class="config-secao">
+      <h3>Sobre</h3>
+      <p class="config-texto">Folhas — diário pessoal de doramas. Os dados ficam salvos apenas neste dispositivo/navegador.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast oculto"></div>
+
+<script src="js/db.js"></script>
+<script src="js/tmdb.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
