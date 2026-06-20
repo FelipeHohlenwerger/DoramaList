@@ -42,12 +42,27 @@ async function chamarTmdb(endpoint, params = {}) {
 }
 
 function ehProducaoAsiatica(r, tipo) {
+  // original_language é o critério mais confiável: é fixo por título e reflete
+  // o idioma em que a obra foi originalmente roteirizada/falada.
+  // origin_country pode listar múltiplos países de exibição/co-produção e
+  // gerar falsos positivos (ex.: séries americanas antigas com versão/exibição
+  // asiática listada). Por isso exigimos os dois critérios concordando,
+  // OU usamos só o idioma quando origin_country vier vazio.
+  const idiomaOk = IDIOMAS_ALVO.includes(r.original_language);
+
   if (tipo === 'serie') {
     const paises = r.origin_country || [];
-    return paises.some((p) => PAISES_ALVO.includes(p));
+    const paisOk = paises.some((p) => PAISES_ALVO.includes(p));
+    if (paises.length === 0) return idiomaOk;
+    // Exige concordância entre país de origem E idioma original.
+    // Isso elimina casos como "Friends" (US, en) que às vezes aparecem
+    // com country contaminado, e também elimina remakes locais com nomes
+    // parecidos mas idioma diferente do original buscado.
+    return paisOk && idiomaOk;
   }
-  // Filmes não trazem origin_country na busca; usamos o idioma original.
-  return IDIOMAS_ALVO.includes(r.original_language);
+
+  // Filmes não trazem origin_country na busca; usamos só o idioma original.
+  return idiomaOk;
 }
 
 // Busca tanto em "tv" quanto em "movie", retornando apenas produções

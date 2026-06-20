@@ -6,6 +6,21 @@ const STATUS_LABEL = {
   assistido: 'Assistido',
 };
 
+const TIPO_LABEL = {
+  serie: 'Série',
+  filme: 'Filme',
+  minidrama: 'Minidrama',
+};
+
+function labelTipo(tipo) {
+  return TIPO_LABEL[tipo] || 'Série';
+}
+
+// Tipos que têm "progresso de episódios" (série e minidrama têm; filme não)
+function temEpisodios(tipo) {
+  return tipo === 'serie' || tipo === 'minidrama';
+}
+
 let estado = {
   titulos: [],
   filtroStatus: 'todos',
@@ -33,11 +48,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function registrarServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {
-      // Falha silenciosa: app continua funcionando sem cache offline
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.register('sw.js').then((registro) => {
+    // Se já existe um worker esperando (nova versão pronta), ativa e recarrega.
+    if (registro.waiting) {
+      registro.waiting.postMessage('SKIP_WAITING');
+    }
+
+    registro.addEventListener('updatefound', () => {
+      const novoWorker = registro.installing;
+      novoWorker.addEventListener('statechange', () => {
+        if (novoWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // Nova versão instalada: ativa imediatamente.
+          novoWorker.postMessage('SKIP_WAITING');
+        }
+      });
     });
-  }
+  }).catch(() => {
+    // Falha silenciosa: app continua funcionando sem cache offline
+  });
+
+  // Quando o novo worker assume o controle, recarrega a página uma única vez
+  // para garantir que o HTML/CSS/JS novos sejam usados.
+  let jaRecarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (jaRecarregou) return;
+    jaRecarregou = true;
+    window.location.reload();
+  });
 }
 
 async function carregarTitulos() {
@@ -123,7 +162,7 @@ function prepararEventos() {
 
   // Form de cadastro manual
   document.getElementById('manual-tipo').addEventListener('change', (e) => {
-    document.getElementById('campo-episodios').style.display = e.target.value === 'filme' ? 'none' : '';
+    atualizarCamposFormularioPorTipo(e.target.value);
   });
   document.getElementById('form-manual').addEventListener('submit', salvarFormManual);
 
@@ -134,6 +173,7 @@ function prepararEventos() {
     document.getElementById('input-importar-arquivo').click();
   });
   document.getElementById('input-importar-arquivo').addEventListener('change', importarBackup);
+  document.getElementById('btn-verificar-atualizacao').addEventListener('click', verificarAtualizacao);
 }
 
 // ===================== BUSCA TMDB =====================
@@ -182,7 +222,7 @@ function criarItemResultado(r) {
       : `<div class="resultado-poster"></div>`}
     <div class="resultado-info">
       <div class="nome">${escapeHtml(r.titulo)}</div>
-      <div class="meta">${r.tipo === 'serie' ? 'Série' : 'Filme'}${r.ano ? ' · ' + r.ano : ''}</div>
+      <div class="meta">${labelTipo(r.tipo)}${r.ano ? ' · ' + r.ano : ''}</div>
     </div>
     <button class="resultado-acao" ${jaExiste ? 'disabled' : ''}>${jaExiste ? 'Na lista' : 'Adicionar'}</button>
   `;
@@ -324,7 +364,7 @@ function criarCardDescobrir(r) {
     </div>
     <div class="card-info">
       <div class="titulo">${escapeHtml(r.titulo)}</div>
-      <div class="ano">${r.ano || ''}${r.ano ? ' · ' : ''}${r.tipo === 'serie' ? 'Série' : 'Filme'}</div>
+      <div class="ano">${r.ano || ''}${r.ano ? ' · ' : ''}${labelTipo(r.tipo)}</div>
     </div>
   `;
 
@@ -419,7 +459,7 @@ function criarCardTitulo(titulo) {
     </div>
     <div class="card-info">
       <div class="titulo">${escapeHtml(titulo.titulo)}</div>
-      <div class="ano">${titulo.ano || ''}${titulo.ano && titulo.tipo ? ' · ' : ''}${titulo.tipo === 'serie' ? 'Série' : 'Filme'}</div>
+      <div class="ano">${titulo.ano || ''}${titulo.ano && titulo.tipo ? ' · ' : ''}${labelTipo(titulo.tipo)}</div>
     </div>
   `;
   card.addEventListener('click', () => abrirModalDetalhes(titulo.id));
@@ -443,7 +483,7 @@ function renderizarDetalhesHtml(t) {
     .map((g) => `<span class="tag-genero">${escapeHtml(g)}</span>`)
     .join('');
 
-  const progressoHtml = t.tipo === 'serie'
+  const progressoHtml = temEpisodios(t.tipo)
     ? `
       <div class="detalhes-bloco">
         <div class="detalhes-bloco-titulo">Progresso</div>
@@ -472,7 +512,7 @@ function renderizarDetalhesHtml(t) {
       <div class="detalhes-cabecalho">
         <h2>${escapeHtml(t.titulo)}</h2>
         ${t.tituloOriginal ? `<div class="original">${escapeHtml(t.tituloOriginal)}</div>` : ''}
-        <div class="progresso-texto">${t.ano || 'Ano desconhecido'} · ${t.tipo === 'serie' ? 'Série' : 'Filme'}</div>
+        <div class="progresso-texto">${t.ano || 'Ano desconhecido'} · ${labelTipo(t.tipo)}${t.plataforma ? ' · ' + escapeHtml(t.plataforma) : ''}</div>
         <div class="detalhes-generos">${generosHtml}</div>
       </div>
     </div>
@@ -520,7 +560,7 @@ function prepararEventosDetalhes(titulo) {
   container.querySelectorAll('.status-opcao').forEach((btn) => {
     btn.addEventListener('click', async () => {
       titulo.status = btn.dataset.status;
-      if (titulo.status === 'assistido' && titulo.tipo === 'serie' && titulo.totalEpisodios) {
+      if (titulo.status === 'assistido' && temEpisodios(titulo.tipo) && titulo.totalEpisodios) {
         titulo.episodiosVistos = titulo.totalEpisodios;
       }
       await window.DoramaDB.salvarTitulo(titulo);
@@ -595,6 +635,16 @@ async function refrescarApósEdicao(tituloAtualizado) {
   renderizarLista();
 }
 
+function atualizarCamposFormularioPorTipo(tipo) {
+  document.getElementById('campo-episodios').style.display = temEpisodios(tipo) ? '' : 'none';
+  document.getElementById('campo-plataforma').classList.toggle('oculto', tipo !== 'minidrama');
+
+  const labelEpisodios = document.querySelector('#campo-episodios span');
+  if (labelEpisodios) {
+    labelEpisodios.textContent = tipo === 'minidrama' ? 'Nº de episódios (curtos)' : 'Nº de episódios';
+  }
+}
+
 // ===================== CADASTRO MANUAL =====================
 
 function abrirModalManual(tituloExistente = null) {
@@ -611,12 +661,12 @@ function abrirModalManual(tituloExistente = null) {
   document.getElementById('manual-ano').value = tituloExistente ? (tituloExistente.ano || '') : '';
   document.getElementById('manual-episodios').value = tituloExistente ? (tituloExistente.totalEpisodios || '') : '';
   document.getElementById('manual-generos').value = tituloExistente ? (tituloExistente.generos || []).join(', ') : '';
+  document.getElementById('manual-plataforma').value = tituloExistente ? (tituloExistente.plataforma || '') : '';
   document.getElementById('manual-sinopse').value = tituloExistente ? (tituloExistente.sinopse || '') : '';
   document.getElementById('manual-poster').value = tituloExistente ? (tituloExistente.poster || '') : '';
   document.getElementById('manual-status').value = tituloExistente ? tituloExistente.status : 'quero_assistir';
 
-  document.getElementById('campo-episodios').style.display =
-    document.getElementById('manual-tipo').value === 'filme' ? 'none' : '';
+  atualizarCamposFormularioPorTipo(document.getElementById('manual-tipo').value);
 
   abrirModal('modal-manual');
 }
@@ -651,8 +701,9 @@ async function salvarFormManual(e) {
   registro.titulo = document.getElementById('manual-titulo').value.trim();
   registro.tituloOriginal = document.getElementById('manual-titulo-original').value.trim();
   registro.ano = parseInt(document.getElementById('manual-ano').value, 10) || null;
-  registro.totalEpisodios = tipo === 'serie' ? (parseInt(document.getElementById('manual-episodios').value, 10) || null) : null;
+  registro.totalEpisodios = temEpisodios(tipo) ? (parseInt(document.getElementById('manual-episodios').value, 10) || null) : null;
   registro.generos = generos;
+  registro.plataforma = tipo === 'minidrama' ? document.getElementById('manual-plataforma').value.trim() : '';
   registro.sinopse = document.getElementById('manual-sinopse').value.trim();
   registro.poster = document.getElementById('manual-poster').value.trim() || null;
   registro.status = document.getElementById('manual-status').value;
@@ -725,6 +776,32 @@ async function importarBackup(e) {
     document.getElementById('status-backup').textContent = 'Arquivo inválido ou corrompido.';
   } finally {
     e.target.value = '';
+  }
+}
+
+async function verificarAtualizacao() {
+  const status = document.getElementById('status-atualizacao');
+  if (!('serviceWorker' in navigator)) {
+    status.textContent = 'Atualização automática não suportada neste navegador.';
+    return;
+  }
+  status.textContent = 'Verificando...';
+  try {
+    const registro = await navigator.serviceWorker.getRegistration();
+    if (!registro) {
+      window.location.reload(true);
+      return;
+    }
+    await registro.update();
+    if (registro.waiting) {
+      registro.waiting.postMessage('SKIP_WAITING');
+      status.textContent = 'Atualização encontrada, recarregando...';
+    } else {
+      status.textContent = 'Você já está na versão mais recente ✓';
+      setTimeout(() => window.location.reload(true), 600);
+    }
+  } catch (err) {
+    status.textContent = 'Não foi possível verificar agora.';
   }
 }
 

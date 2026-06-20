@@ -56,9 +56,10 @@
       <option value="">Todas as categorias</option>
     </select>
     <select id="filtro-tipo" class="select-genero">
-      <option value="">Filme e série</option>
+      <option value="">Todos os tipos</option>
       <option value="serie">Só séries</option>
       <option value="filme">Só filmes</option>
+      <option value="minidrama">Só minidramas</option>
     </select>
     <select id="filtro-ordenacao" class="select-genero">
       <option value="recente">Mais recentes</option>
@@ -135,6 +136,7 @@
         <select id="manual-tipo" required>
           <option value="serie">Série</option>
           <option value="filme">Filme</option>
+          <option value="minidrama">Minidrama</option>
         </select>
       </label>
 
@@ -161,7 +163,12 @@
 
       <label class="campo">
         <span>Categorias / gêneros (separe por vírgula)</span>
-        <input type="text" id="manual-generos" placeholder="Romance, Comédia, Drama" />
+        <input type="text" id="manual-generos" placeholder="Romance, Comédia, Crime" />
+      </label>
+
+      <label class="campo oculto" id="campo-plataforma">
+        <span>App/plataforma de origem (opcional)</span>
+        <input type="text" id="manual-plataforma" placeholder="Ex: ReelShort, DramaBox, GoodShort" />
       </label>
 
       <label class="campo">
@@ -217,6 +224,13 @@
       </div>
       <input type="file" id="input-importar-arquivo" accept=".json" class="oculto" />
       <p id="status-backup" class="config-status"></p>
+    </div>
+
+    <div class="config-secao">
+      <h3>Atualizações do app</h3>
+      <p class="config-texto">Se você acabou de atualizar o app mas não vê as novidades, toque no botão abaixo para forçar a busca pela versão mais recente.</p>
+      <button class="btn-secundario" id="btn-verificar-atualizacao">Verificar atualizações</button>
+      <p id="status-atualizacao" class="config-status"></p>
     </div>
 
     <div class="config-secao">

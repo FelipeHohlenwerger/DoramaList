@@ -1,8 +1,10 @@
 // sw.js — Service Worker do Folhas
-// Cacheia os arquivos estáticos do app para funcionar offline.
-// Chamadas à API do TMDB NÃO são cacheadas (precisam de rede para buscar títulos novos).
+// Estratégia: NETWORK-FIRST para arquivos do app (HTML/CSS/JS) — sempre tenta
+// buscar a versão mais nova primeiro, e só usa o cache se estiver offline.
+// Isso garante que atualizações do app cheguem ao usuário sem precisar
+// desinstalar o PWA. Chamadas à API do TMDB nunca são cacheadas.
 
-const CACHE_NAME = 'folhas-cache-v1';
+const CACHE_NAME = 'folhas-cache-v3';
 const ARQUIVOS_ESTATICOS = [
   './',
   './index.html',
@@ -43,23 +45,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // NETWORK-FIRST: busca na rede; só usa cache se a rede falhar (offline).
   event.respondWith(
-    caches.match(event.request).then((respostaCache) => {
-      if (respostaCache) return respostaCache;
-
-      return fetch(event.request)
-        .then((respostaRede) => {
-          // Cacheia novas requisições de mesma origem para uso offline futuro
-          const copia = respostaRede.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copia));
-          return respostaRede;
-        })
-        .catch(() => {
-          // Sem rede e sem cache: se for navegação de página, devolve o index
+    fetch(event.request)
+      .then((respostaRede) => {
+        const copia = respostaRede.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copia));
+        return respostaRede;
+      })
+      .catch(() =>
+        caches.match(event.request).then((respostaCache) => {
+          if (respostaCache) return respostaCache;
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }
-        });
-    })
+        })
+      )
   );
+});
+
+// Permite que a página force a troca imediata de versão do Service Worker
+// (usado pelo botão "Verificar atualizações" nas Configurações).
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
