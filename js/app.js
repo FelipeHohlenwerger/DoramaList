@@ -13,6 +13,12 @@ let estado = {
   filtroTipo: '',
   ordenacao: 'recente',
   buscaDebounce: null,
+  abaAtiva: 'biblioteca',
+  descobrir: {
+    pagina: 1,
+    totalPaginas: 1,
+    carregando: false,
+  },
 };
 
 // ===================== INICIALIZAÇÃO =====================
@@ -87,6 +93,19 @@ function prepararEventos() {
     estado.ordenacao = e.target.value;
     renderizarLista();
   });
+
+  // Abas principais (Minha lista / Descobrir)
+  document.getElementById('abas-principais').addEventListener('click', (e) => {
+    const aba = e.target.closest('.aba');
+    if (!aba) return;
+    trocarAba(aba.dataset.aba);
+  });
+
+  // Filtros da aba Descobrir
+  document.getElementById('descobrir-pais').addEventListener('change', () => carregarDescobrir(true));
+  document.getElementById('descobrir-tipo').addEventListener('change', () => carregarDescobrir(true));
+  document.getElementById('descobrir-ordenacao').addEventListener('change', () => carregarDescobrir(true));
+  document.getElementById('btn-carregar-mais').addEventListener('click', () => carregarDescobrir(false));
 
   // Botões de abrir modais
   document.getElementById('btn-add-manual').addEventListener('click', () => abrirModalManual());
@@ -200,6 +219,127 @@ async function importarDeTmdb(tmdbId, tipo) {
   } catch (err) {
     mostrarToast('Não foi possível importar este título agora.');
   }
+}
+
+// ===================== ABA: DESCOBRIR =====================
+
+function trocarAba(aba) {
+  estado.abaAtiva = aba;
+
+  document.querySelectorAll('.aba').forEach((el) => {
+    el.classList.toggle('ativo', el.dataset.aba === aba);
+  });
+
+  const ehBiblioteca = aba === 'biblioteca';
+  document.getElementById('filtros-status').classList.toggle('oculto', !ehBiblioteca);
+  document.getElementById('lista-principal').classList.toggle('oculto', !ehBiblioteca);
+  document.getElementById('estado-vazio').classList.toggle('oculto', true); // recalculado abaixo se preciso
+
+  // filtros-secundarios é compartilhado visualmente mas com conteúdo diferente por aba;
+  // o de "Minha lista" já existe acima do main, o de "Descobrir" está dentro da section.
+  const filtrosBiblioteca = document.querySelectorAll('.filtros-secundarios')[0];
+  filtrosBiblioteca.classList.toggle('oculto', !ehBiblioteca);
+
+  document.getElementById('secao-descobrir').classList.toggle('oculto', ehBiblioteca);
+
+  if (ehBiblioteca) {
+    renderizarLista();
+  } else if (document.getElementById('grid-descobrir').children.length === 0) {
+    carregarDescobrir(true);
+  }
+}
+
+async function carregarDescobrir(reiniciar) {
+  if (estado.descobrir.carregando) return;
+
+  if (!window.DoramaTMDB.temApiKey()) {
+    document.getElementById('descobrir-aviso-key').classList.remove('oculto');
+    document.getElementById('descobrir-aviso-key').innerHTML =
+      'Configure sua chave da API do TMDB em <strong>Configurações</strong> (⚙) para descobrir títulos.';
+    document.getElementById('grid-descobrir').innerHTML = '';
+    document.getElementById('btn-carregar-mais').classList.add('oculto');
+    return;
+  }
+  document.getElementById('descobrir-aviso-key').classList.add('oculto');
+
+  if (reiniciar) {
+    estado.descobrir.pagina = 1;
+    document.getElementById('grid-descobrir').innerHTML = '';
+  }
+
+  const pais = document.getElementById('descobrir-pais').value;
+  const tipo = document.getElementById('descobrir-tipo').value;
+  const ordenarPor = document.getElementById('descobrir-ordenacao').value;
+
+  estado.descobrir.carregando = true;
+  document.getElementById('descobrir-carregando').classList.remove('oculto');
+  document.getElementById('btn-carregar-mais').classList.add('oculto');
+
+  try {
+    const { resultados, paginaAtual, totalPaginas } = await window.DoramaTMDB.descobrirTitulos({
+      tipo,
+      pais,
+      pagina: estado.descobrir.pagina,
+      ordenarPor,
+    });
+
+    estado.descobrir.totalPaginas = totalPaginas;
+
+    const grid = document.getElementById('grid-descobrir');
+    if (resultados.length === 0 && paginaAtual === 1) {
+      grid.innerHTML = '<div class="resultado-vazio">Nenhum título encontrado com esses filtros.</div>';
+    } else {
+      resultados.forEach((r) => grid.appendChild(criarCardDescobrir(r)));
+    }
+
+    if (paginaAtual < totalPaginas) {
+      document.getElementById('btn-carregar-mais').classList.remove('oculto');
+      estado.descobrir.pagina = paginaAtual + 1;
+    }
+  } catch (err) {
+    document.getElementById('descobrir-aviso-key').classList.remove('oculto');
+    document.getElementById('descobrir-aviso-key').textContent =
+      err.message === 'API_KEY_INVALIDA'
+        ? 'Sua chave da API parece inválida. Verifique em Configurações.'
+        : 'Não foi possível carregar agora. Verifique sua conexão.';
+  } finally {
+    estado.descobrir.carregando = false;
+    document.getElementById('descobrir-carregando').classList.add('oculto');
+  }
+}
+
+function criarCardDescobrir(r) {
+  const jaExiste = estado.titulos.some((t) => t.tmdbId === r.tmdbId);
+
+  const card = document.createElement('div');
+  card.className = 'card-titulo';
+  card.innerHTML = `
+    <div class="card-poster-wrap">
+      ${r.poster
+        ? `<img src="${r.poster}" alt="" loading="lazy" />`
+        : `<div class="card-poster-placeholder">${escapeHtml(r.titulo)}</div>`}
+      <button class="card-descobrir-acao" ${jaExiste ? 'disabled' : ''} title="${jaExiste ? 'Já está na sua lista' : 'Adicionar à minha lista'}">
+        ${jaExiste ? '✓' : '+'}
+      </button>
+    </div>
+    <div class="card-info">
+      <div class="titulo">${escapeHtml(r.titulo)}</div>
+      <div class="ano">${r.ano || ''}${r.ano ? ' · ' : ''}${r.tipo === 'serie' ? 'Série' : 'Filme'}</div>
+    </div>
+  `;
+
+  const btnAcao = card.querySelector('.card-descobrir-acao');
+  if (!jaExiste) {
+    btnAcao.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      btnAcao.disabled = true;
+      await importarDeTmdb(r.tmdbId, r.tipo);
+      btnAcao.textContent = '✓';
+      btnAcao.title = 'Já está na sua lista';
+    });
+  }
+
+  return card;
 }
 
 // ===================== RENDERIZAÇÃO DA LISTA =====================

@@ -5,6 +5,12 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w342';
 const TMDB_IMG_BASE_GRANDE = 'https://image.tmdb.org/t/p/w780';
 
+// Países/idiomas considerados "dorama" para fins de filtro.
+// Séries usam origin_country; filmes (que não retornam origin_country na busca)
+// usam original_language como proxy.
+const PAISES_ALVO = ['KR', 'JP', 'CN', 'TH', 'TW', 'HK'];
+const IDIOMAS_ALVO = ['ko', 'ja', 'zh', 'th'];
+
 function getApiKey() {
   return localStorage.getItem('tmdb_api_key') || '';
 }
@@ -35,8 +41,17 @@ async function chamarTmdb(endpoint, params = {}) {
   return resp.json();
 }
 
-// Busca tanto em "tv" quanto em "movie", priorizando produções asiáticas
-// (Coreia, Japão, China, Tailândia) mas sem bloquear outros países.
+function ehProducaoAsiatica(r, tipo) {
+  if (tipo === 'serie') {
+    const paises = r.origin_country || [];
+    return paises.some((p) => PAISES_ALVO.includes(p));
+  }
+  // Filmes não trazem origin_country na busca; usamos o idioma original.
+  return IDIOMAS_ALVO.includes(r.original_language);
+}
+
+// Busca tanto em "tv" quanto em "movie", retornando apenas produções
+// de origem asiática (Coreia, Japão, China, Taiwan, Hong Kong, Tailândia).
 async function buscarTitulos(query) {
   if (!query || query.trim().length < 2) return [];
 
@@ -45,18 +60,16 @@ async function buscarTitulos(query) {
     chamarTmdb('/search/movie', { query }).catch(() => ({ results: [] })),
   ]);
 
-  const tvs = (tvResp.results || []).map((r) => normalizarResultadoBusca(r, 'serie'));
-  const filmes = (movieResp.results || []).map((r) => normalizarResultadoBusca(r, 'filme'));
+  const tvs = (tvResp.results || [])
+    .filter((r) => ehProducaoAsiatica(r, 'serie'))
+    .map((r) => normalizarResultadoBusca(r, 'serie'));
 
-  // Ordena colocando produções de países asiáticos populares primeiro
-  const paisesAlvo = ['KR', 'JP', 'CN', 'TH', 'TW', 'HK'];
+  const filmes = (movieResp.results || [])
+    .filter((r) => ehProducaoAsiatica(r, 'filme'))
+    .map((r) => normalizarResultadoBusca(r, 'filme'));
+
   const combinados = [...tvs, ...filmes];
-  combinados.sort((a, b) => {
-    const aAlvo = paisesAlvo.includes(a.paisOrigem) ? 0 : 1;
-    const bAlvo = paisesAlvo.includes(b.paisOrigem) ? 0 : 1;
-    if (aAlvo !== bAlvo) return aAlvo - bAlvo;
-    return (b.popularidade || 0) - (a.popularidade || 0);
-  });
+  combinados.sort((a, b) => (b.popularidade || 0) - (a.popularidade || 0));
 
   return combinados;
 }
@@ -79,6 +92,50 @@ function extrairAno(dataStr) {
   if (!dataStr) return null;
   const ano = parseInt(dataStr.slice(0, 4), 10);
   return Number.isNaN(ano) ? null : ano;
+}
+
+// ===================== DESCOBRIR =====================
+// Lista doramas populares/recentes direto, sem precisar buscar por nome.
+// Usa o endpoint /discover, filtrando por país de origem (séries) ou
+// idioma original (filmes), igual à busca.
+
+const MAPA_PAIS_LABEL = {
+  KR: 'Coreia do Sul',
+  JP: 'Japão',
+  CN: 'China',
+  TH: 'Tailândia',
+  TW: 'Taiwan',
+  HK: 'Hong Kong',
+};
+
+async function descobrirTitulos({ tipo = 'serie', pais = '', pagina = 1, ordenarPor = 'popularity.desc' } = {}) {
+  const endpoint = tipo === 'serie' ? '/discover/tv' : '/discover/movie';
+  const params = {
+    sort_by: ordenarPor,
+    page: pagina,
+    'vote_count.gte': 10, // evita títulos obscuros/sem avaliação nenhuma
+  };
+
+  if (tipo === 'serie') {
+    params.with_origin_country = pais || PAISES_ALVO.join('|');
+  } else {
+    params.with_original_language = pais
+      ? paisParaIdioma(pais)
+      : IDIOMAS_ALVO.join('|');
+  }
+
+  const resp = await chamarTmdb(endpoint, params);
+  const resultados = (resp.results || []).map((r) => normalizarResultadoBusca(r, tipo));
+  return {
+    resultados,
+    paginaAtual: resp.page || 1,
+    totalPaginas: resp.total_pages || 1,
+  };
+}
+
+function paisParaIdioma(pais) {
+  const mapa = { KR: 'ko', JP: 'ja', CN: 'zh', TW: 'zh', HK: 'zh', TH: 'th' };
+  return mapa[pais] || IDIOMAS_ALVO.join('|');
 }
 
 // Busca detalhes completos para importar (gêneros, sinopse completa, episódios etc.)
@@ -110,5 +167,7 @@ window.DoramaTMDB = {
   setApiKey,
   temApiKey,
   buscarTitulos,
+  descobrirTitulos,
   buscarDetalhes,
+  MAPA_PAIS_LABEL,
 };

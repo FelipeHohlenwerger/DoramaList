@@ -263,6 +263,63 @@ input, select, textarea {
   text-align: center;
 }
 
+/* ===================== ABAS PRINCIPAIS ===================== */
+.abas-principais {
+  display: flex;
+  gap: 6px;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-linha);
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.aba {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--cor-texto-fraco);
+  padding: 10px 0;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.aba.ativo {
+  background: var(--cor-acento);
+  color: #1a1115;
+}
+
+/* ===================== ABA DESCOBRIR ===================== */
+.secao-descobrir {
+  margin-top: 4px;
+}
+.btn-carregar-mais {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+}
+.card-descobrir-acao {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,92,71,0.92);
+  color: #1a1115;
+  border: none;
+  font-size: 17px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.card-descobrir-acao:disabled {
+  background: rgba(110,200,150,0.92);
+  color: #102015;
+}
+
 /* ===================== FILTROS ===================== */
 .filtros-status {
   display: flex;

@@ -37,6 +37,12 @@
 
   <div id="resultados-busca" class="resultados-busca oculto"></div>
 
+  <!-- ===================== ABAS PRINCIPAIS ===================== -->
+  <nav class="abas-principais" id="abas-principais">
+    <button class="aba ativo" data-aba="biblioteca">Minha lista</button>
+    <button class="aba" data-aba="descobrir">Descobrir</button>
+  </nav>
+
   <!-- ===================== FILTROS ===================== -->
   <nav class="filtros-status" id="filtros-status">
     <button class="chip chip-status ativo" data-status="todos">Todos</button>
@@ -62,13 +68,49 @@
     </select>
   </div>
 
-  <!-- ===================== LISTA PRINCIPAL ===================== -->
+  <!-- ===================== LISTA PRINCIPAL (Minha lista) ===================== -->
   <main id="lista-principal" class="grid-titulos"></main>
 
   <div id="estado-vazio" class="estado-vazio oculto">
     <p class="estado-vazio-titulo">Nada por aqui ainda</p>
     <p class="estado-vazio-texto">Busque um título acima ou cadastre manualmente para começar sua lista.</p>
   </div>
+
+  <!-- ===================== ABA DESCOBRIR ===================== -->
+  <section id="secao-descobrir" class="secao-descobrir oculto">
+    <div class="filtros-secundarios">
+      <select id="descobrir-pais" class="select-genero">
+        <option value="">Todos os países</option>
+        <option value="KR">Coreia do Sul</option>
+        <option value="JP">Japão</option>
+        <option value="CN">China</option>
+        <option value="TH">Tailândia</option>
+        <option value="TW">Taiwan</option>
+        <option value="HK">Hong Kong</option>
+      </select>
+      <select id="descobrir-tipo" class="select-genero">
+        <option value="serie">Séries</option>
+        <option value="filme">Filmes</option>
+      </select>
+      <select id="descobrir-ordenacao" class="select-genero">
+        <option value="popularity.desc">Mais populares</option>
+        <option value="vote_average.desc">Melhor avaliados</option>
+        <option value="first_air_date.desc">Mais recentes</option>
+      </select>
+    </div>
+
+    <div id="descobrir-aviso-key" class="resultado-aviso oculto"></div>
+
+    <main id="grid-descobrir" class="grid-titulos"></main>
+
+    <div id="descobrir-carregando" class="estado-vazio oculto">
+      <p class="estado-vazio-texto">Carregando títulos...</p>
+    </div>
+
+    <button id="btn-carregar-mais" class="btn-secundario btn-carregar-mais oculto">Carregar mais</button>
+  </section>
+
+
 
 </div>
 
