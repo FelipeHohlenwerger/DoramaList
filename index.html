@@ -128,6 +128,11 @@
   <div class="modal-card">
     <button class="modal-fechar" data-fechar="modal-manual">×</button>
     <h2 class="modal-titulo">Cadastrar título</h2>
+
+    <button type="button" class="btn-secundario btn-duplicar oculto" id="btn-duplicar-ultimo">
+      ↻ Repetir dados do último cadastro
+    </button>
+
     <form id="form-manual">
       <input type="hidden" id="manual-id" />
 
@@ -166,6 +171,19 @@
         <input type="text" id="manual-generos" placeholder="Romance, Comédia, Crime" />
       </label>
 
+      <div class="generos-rapidos" id="generos-rapidos">
+        <button type="button" class="chip-genero-rapido" data-genero="Romance">+ Romance</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Drama">+ Drama</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Comédia">+ Comédia</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Suspense">+ Suspense</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Fantasia">+ Fantasia</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Histórico">+ Histórico</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Ação">+ Ação</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Crime">+ Crime</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Família">+ Família</button>
+        <button type="button" class="chip-genero-rapido" data-genero="Escolar">+ Escolar</button>
+      </div>
+
       <label class="campo oculto" id="campo-plataforma">
         <span>App/plataforma de origem (opcional)</span>
         <input type="text" id="manual-plataforma" placeholder="Ex: ReelShort, DramaBox, GoodShort" />
@@ -178,7 +196,10 @@
 
       <label class="campo">
         <span>URL do poster (opcional)</span>
-        <input type="url" id="manual-poster" placeholder="https://..." />
+        <div class="campo-com-acao">
+          <input type="url" id="manual-poster" placeholder="https://..." />
+          <button type="button" class="btn-secundario btn-buscar-poster" id="btn-buscar-poster">Buscar imagem</button>
+        </div>
       </label>
 
       <label class="campo">

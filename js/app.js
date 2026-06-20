@@ -166,6 +166,28 @@ function prepararEventos() {
   });
   document.getElementById('form-manual').addEventListener('submit', salvarFormManual);
 
+  // Chips de gênero rápido: clicar adiciona/remove do campo de texto
+  document.getElementById('generos-rapidos').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip-genero-rapido');
+    if (!chip) return;
+    alternarGeneroRapido(chip.dataset.genero);
+  });
+  document.getElementById('manual-generos').addEventListener('input', sincronizarChipsGenero);
+
+  // Buscar imagem do poster: abre busca de imagens do Google numa nova aba
+  document.getElementById('btn-buscar-poster').addEventListener('click', () => {
+    const titulo = document.getElementById('manual-titulo').value.trim();
+    if (!titulo) {
+      mostrarToast('Digite o título antes de buscar a imagem.');
+      return;
+    }
+    const query = encodeURIComponent(`${titulo} poster`);
+    window.open(`https://www.google.com/search?q=${query}&tbm=isch`, '_blank');
+  });
+
+  // Duplicar último cadastro
+  document.getElementById('btn-duplicar-ultimo').addEventListener('click', duplicarUltimoCadastro);
+
   // Configurações
   document.getElementById('btn-salvar-api-key').addEventListener('click', salvarApiKeyTela);
   document.getElementById('btn-exportar').addEventListener('click', exportarBackup);
@@ -645,6 +667,61 @@ function atualizarCamposFormularioPorTipo(tipo) {
   }
 }
 
+function listaGenerosAtual() {
+  return document.getElementById('manual-generos').value
+    .split(',')
+    .map((g) => g.trim())
+    .filter(Boolean);
+}
+
+function definirListaGeneros(lista) {
+  document.getElementById('manual-generos').value = lista.join(', ');
+}
+
+function alternarGeneroRapido(genero) {
+  const atuais = listaGenerosAtual();
+  const idx = atuais.findIndex((g) => g.toLowerCase() === genero.toLowerCase());
+  if (idx >= 0) {
+    atuais.splice(idx, 1);
+  } else {
+    atuais.push(genero);
+  }
+  definirListaGeneros(atuais);
+  sincronizarChipsGenero();
+}
+
+function sincronizarChipsGenero() {
+  const atuais = listaGenerosAtual().map((g) => g.toLowerCase());
+  document.querySelectorAll('.chip-genero-rapido').forEach((chip) => {
+    const ativo = atuais.includes(chip.dataset.genero.toLowerCase());
+    chip.classList.toggle('selecionado', ativo);
+  });
+}
+
+// Guarda o último título cadastrado manualmente (sessão atual) para permitir
+// duplicar tipo/plataforma/gêneros rapidamente ao cadastrar vários títulos
+// da mesma origem em sequência (ex.: vários minidramas do ReelShort).
+let ultimoCadastroManual = null;
+
+function duplicarUltimoCadastro() {
+  if (!ultimoCadastroManual) return;
+  const u = ultimoCadastroManual;
+
+  document.getElementById('manual-tipo').value = u.tipo;
+  atualizarCamposFormularioPorTipo(u.tipo);
+  definirListaGeneros(u.generos || []);
+  sincronizarChipsGenero();
+  document.getElementById('manual-plataforma').value = u.plataforma || '';
+  document.getElementById('manual-ano').value = u.ano || '';
+  document.getElementById('manual-status').value = u.status || 'quero_assistir';
+
+  // Título, título original, sinopse e poster ficam em branco de propósito —
+  // são específicos de cada obra e não devem ser herdados.
+  document.getElementById('manual-titulo').focus();
+
+  mostrarToast('Dados repetidos. Só falta o título!');
+}
+
 // ===================== CADASTRO MANUAL =====================
 
 function abrirModalManual(tituloExistente = null) {
@@ -667,6 +744,14 @@ function abrirModalManual(tituloExistente = null) {
   document.getElementById('manual-status').value = tituloExistente ? tituloExistente.status : 'quero_assistir';
 
   atualizarCamposFormularioPorTipo(document.getElementById('manual-tipo').value);
+  sincronizarChipsGenero();
+
+  // "Repetir dados do último cadastro" só faz sentido em cadastro novo
+  // (não em edição) e só se já houver algo pra repetir nesta sessão.
+  document.getElementById('btn-duplicar-ultimo').classList.toggle(
+    'oculto',
+    !!tituloExistente || !ultimoCadastroManual
+  );
 
   abrirModal('modal-manual');
 }
@@ -712,6 +797,21 @@ async function salvarFormManual(e) {
   await carregarTitulos();
   popularFiltroGeneros();
   renderizarLista();
+
+  // Guarda os dados "reutilizáveis" (tipo, gêneros, plataforma, ano, status)
+  // para o atalho de "Repetir dados do último cadastro" — só em cadastros
+  // novos, pois editar um título existente não reflete a intenção de
+  // "cadastrar mais um parecido".
+  if (!idExistente) {
+    ultimoCadastroManual = {
+      tipo: registro.tipo,
+      generos: registro.generos,
+      plataforma: registro.plataforma,
+      ano: registro.ano,
+      status: registro.status,
+    };
+  }
+
   fecharModal('modal-manual');
   mostrarToast(idExistente ? 'Alterações salvas.' : `"${registro.titulo}" cadastrado.`);
 }

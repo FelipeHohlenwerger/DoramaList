@@ -531,6 +531,51 @@ input, select, textarea {
   padding-right: 30px;
 }
 
+/* ===================== CADASTRO RÁPIDO (chips, duplicar, buscar poster) ===================== */
+.btn-duplicar {
+  display: block;
+  width: 100%;
+  margin-bottom: 18px;
+  color: var(--cor-dourado);
+  border-color: #4a3f2a;
+  background: rgba(232,196,104,0.08);
+}
+
+.generos-rapidos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -6px 0 14px;
+}
+
+.chip-genero-rapido {
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-linha);
+  color: var(--cor-texto-fraco);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.chip-genero-rapido:active { transform: scale(0.95); }
+.chip-genero-rapido.selecionado {
+  background: var(--cor-acento-fraco);
+  border-color: var(--cor-acento);
+  color: var(--cor-acento);
+}
+
+.campo-com-acao {
+  display: flex;
+  gap: 8px;
+}
+.campo-com-acao input { flex: 1; }
+.btn-buscar-poster {
+  flex-shrink: 0;
+  padding: 11px 12px;
+  font-size: 12.5px;
+}
+
 /* ===================== FORMULÁRIO ===================== */
 .campo {
   display: flex;
