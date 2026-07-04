@@ -240,15 +240,30 @@ function prepararEventos() {
       adicionarAtorDoInput();
     }
   });
-  document.getElementById('elenco-chips').addEventListener('click', (e) => {
-    const btnFoto = e.target.closest('[data-buscar-foto]');
-    if (btnFoto) {
-      buscarFotoAtor(btnFoto.dataset.buscarFoto);
+  const elencoContainer = document.getElementById('elenco-chips');
+  elencoContainer.addEventListener('click', (e) => {
+    const btnBuscar = e.target.closest('[data-buscar-indice]');
+    if (btnBuscar) {
+      buscarFotoAtorPorIndice(parseInt(btnBuscar.dataset.buscarIndice, 10));
       return;
     }
-    const btnRemover = e.target.closest('[data-remover-ator]');
-    if (!btnRemover) return;
-    removerAtor(btnRemover.dataset.removerAtor);
+    const btnRemover = e.target.closest('[data-remover-indice]');
+    if (btnRemover) {
+      removerAtorPorIndice(parseInt(btnRemover.dataset.removerIndice, 10));
+    }
+  });
+  // Colar/digitar a URL da foto: guarda o valor enquanto digita e atualiza a
+  // miniatura ao sair do campo (para não perder o foco a cada tecla).
+  elencoContainer.addEventListener('input', (e) => {
+    const input = e.target.closest('[data-foto-indice]');
+    if (!input) return;
+    definirFotoAtorPorIndice(parseInt(input.dataset.fotoIndice, 10), input.value);
+  });
+  elencoContainer.addEventListener('change', (e) => {
+    const input = e.target.closest('[data-foto-indice]');
+    if (!input) return;
+    definirFotoAtorPorIndice(parseInt(input.dataset.fotoIndice, 10), input.value);
+    renderizarChipsElenco();
   });
 
   // Limpar filtro de elenco ativo
@@ -1004,16 +1019,24 @@ function fotoDoAtor(item) {
 function renderizarChipsElenco() {
   const container = document.getElementById('elenco-chips');
   container.innerHTML = elencoAtualForm
-    .map((ator) => {
+    .map((ator, indice) => {
       const nome = nomeDoAtor(ator);
       const foto = fotoDoAtor(ator);
+      const iniciais = nome.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
       return `
-        <span class="elenco-chip">
-          ${foto ? `<img class="elenco-chip-foto" src="${foto}" alt="" />` : ''}
-          ${escapeHtml(nome)}
-          <button type="button" class="elenco-chip-foto-btn" data-buscar-foto="${escapeHtml(nome)}" title="Adicionar/trocar foto">📷</button>
-          <button type="button" data-remover-ator="${escapeHtml(nome)}" aria-label="Remover">×</button>
-        </span>
+        <div class="elenco-bloco">
+          <div class="elenco-bloco-topo">
+            ${foto
+              ? `<img class="elenco-bloco-foto" src="${foto}" alt="" />`
+              : `<div class="elenco-bloco-foto-vazia">${escapeHtml(iniciais || '?')}</div>`}
+            <span class="elenco-bloco-nome">${escapeHtml(nome)}</span>
+            <button type="button" class="elenco-bloco-remover" data-remover-indice="${indice}" aria-label="Remover ${escapeHtml(nome)}">×</button>
+          </div>
+          <div class="elenco-bloco-foto-linha">
+            <input type="url" class="elenco-bloco-foto-input" data-foto-indice="${indice}" value="${escapeHtml(foto || '')}" placeholder="Cole aqui a URL da foto..." />
+            <button type="button" class="btn-secundario elenco-bloco-buscar" data-buscar-indice="${indice}" title="Buscar foto no Google">🔍</button>
+          </div>
+        </div>
       `;
     })
     .join('');
@@ -1031,29 +1054,36 @@ function adicionarAtorDoInput() {
   input.focus();
 }
 
-function removerAtor(nome) {
-  elencoAtualForm = elencoAtualForm.filter((a) => nomeDoAtor(a) !== nome);
+function removerAtorPorIndice(indice) {
+  elencoAtualForm.splice(indice, 1);
   renderizarChipsElenco();
 }
 
-// Abre uma busca de imagens do Google para o ator e pede a URL escolhida —
-// mesmo padrão usado para o poster do título.
-function buscarFotoAtor(nome) {
+// Normaliza um item de elenco (que pode ser string, formato antigo) para
+// objeto {nome, foto}, atualizando-o no array pelo índice.
+function garantirObjetoAtor(indice) {
+  const atual = elencoAtualForm[indice];
+  if (typeof atual === 'string') {
+    elencoAtualForm[indice] = { nome: atual, foto: null };
+  }
+  return elencoAtualForm[indice];
+}
+
+// Atualiza a foto do ator conforme o usuário digita/cola no campo visível.
+// Não re-renderiza a cada tecla (isso faria o campo perder o foco); só guarda
+// o valor. A miniatura é atualizada quando o campo perde o foco.
+function definirFotoAtorPorIndice(indice, url) {
+  const ator = garantirObjetoAtor(indice);
+  ator.foto = (url || '').trim() || null;
+}
+
+// Abre a busca de imagens do Google para o ator numa nova aba. NÃO usa prompt
+// (que era bloqueado por navegadores ao abrir aba nova). O usuário copia o
+// link e cola no campo de texto visível ao lado, no próprio ritmo.
+function buscarFotoAtorPorIndice(indice) {
+  const nome = nomeDoAtor(elencoAtualForm[indice]);
   const query = encodeURIComponent(`${nome} ator foto`);
   window.open(`https://www.google.com/search?q=${query}&tbm=isch`, '_blank');
-
-  const url = window.prompt(`Cole a URL da foto de ${nome}:`);
-  if (!url) return;
-
-  const ator = elencoAtualForm.find((a) => nomeDoAtor(a) === nome);
-  if (ator) {
-    if (typeof ator === 'string') {
-      elencoAtualForm = elencoAtualForm.map((a) => (a === ator ? { nome, foto: url.trim() } : a));
-    } else {
-      ator.foto = url.trim();
-    }
-    renderizarChipsElenco();
-  }
 }
 
 // Popula o <datalist> com nomes de atores já usados em qualquer título da
