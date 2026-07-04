@@ -57,9 +57,14 @@
     </select>
     <select id="filtro-tipo" class="select-genero">
       <option value="">Todos os tipos</option>
-      <option value="serie">Só séries</option>
-      <option value="filme">Só filmes</option>
-      <option value="minidrama">Só minidramas</option>
+      <option value="serie">Série</option>
+      <option value="filme">Filme</option>
+      <option value="minidrama">Minidrama</option>
+      <option value="minisserie">Minissérie</option>
+      <option value="dorama">Dorama</option>
+      <option value="cdrama">C-Drama</option>
+      <option value="kdrama">K-Drama</option>
+      <option value="lakorn">Lakorn</option>
     </select>
     <select id="filtro-ordenacao" class="select-genero">
       <option value="recente">Mais recentes</option>
@@ -67,6 +72,11 @@
       <option value="nota">Melhor avaliados</option>
       <option value="ano">Ano de lançamento</option>
     </select>
+  </div>
+
+  <div id="filtro-elenco-ativo" class="filtro-elenco-ativo oculto">
+    <span>Filtrando por elenco: <strong id="filtro-elenco-nome"></strong></span>
+    <button id="btn-limpar-filtro-elenco" aria-label="Limpar filtro de elenco">×</button>
   </div>
 
   <!-- ===================== LISTA PRINCIPAL (Minha lista) ===================== -->
@@ -142,6 +152,11 @@
           <option value="serie">Série</option>
           <option value="filme">Filme</option>
           <option value="minidrama">Minidrama</option>
+          <option value="minisserie">Minissérie</option>
+          <option value="dorama">Dorama</option>
+          <option value="cdrama">C-Drama</option>
+          <option value="kdrama">K-Drama</option>
+          <option value="lakorn">Lakorn</option>
         </select>
       </label>
 
@@ -167,29 +182,92 @@
       </div>
 
       <label class="campo">
-        <span>Categorias / gêneros (separe por vírgula)</span>
-        <input type="text" id="manual-generos" placeholder="Romance, Comédia, Crime" />
+        <span>País</span>
+        <input type="text" id="manual-pais" placeholder="Ex: Coreia do Sul" />
       </label>
 
-      <div class="generos-rapidos" id="generos-rapidos">
-        <button type="button" class="chip-genero-rapido" data-genero="Romance">+ Romance</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Drama">+ Drama</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Comédia">+ Comédia</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Suspense">+ Suspense</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Fantasia">+ Fantasia</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Histórico">+ Histórico</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Ação">+ Ação</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Crime">+ Crime</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Família">+ Família</button>
-        <button type="button" class="chip-genero-rapido" data-genero="Escolar">+ Escolar</button>
-      </div>
+      <details class="secao-colapsavel" open>
+        <summary>Categorias e classificação</summary>
 
-      <label class="campo oculto" id="campo-plataforma">
-        <span>App/plataforma de origem (opcional)</span>
-        <input type="text" id="manual-plataforma" placeholder="Ex: ReelShort, DramaBox, GoodShort" />
-      </label>
+        <label class="campo">
+          <span>Categorias / gêneros (separe por vírgula)</span>
+          <input type="text" id="manual-generos" placeholder="Romance, Comédia, Crime" />
+        </label>
 
-      <label class="campo">
+        <div class="generos-rapidos" id="generos-rapidos">
+          <button type="button" class="chip-genero-rapido" data-valor="Romance">+ Romance</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Drama">+ Drama</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Comédia">+ Comédia</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Suspense">+ Suspense</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Fantasia">+ Fantasia</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Histórico">+ Histórico</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Ação">+ Ação</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Crime">+ Crime</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Família">+ Família</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Ficção Científica (Sci-Fi)">+ Sci-Fi</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Escolar">+ Escolar</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Terror">+ Terror</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Animação">+ Animação</button>
+        </div>
+
+        <label class="campo campo-com-margem">
+          <span>Subgêneros (separe por vírgula)</span>
+          <input type="text" id="manual-subgeneros" placeholder="Ex: Inimigos para Amantes, Vingança" />
+        </label>
+
+        <input type="text" id="busca-subgeneros" class="campo-busca-chips" placeholder="🔎 Buscar subgênero..." />
+        <div class="generos-rapidos" id="subgeneros-rapidos"></div>
+      </details>
+
+      <details class="secao-colapsavel">
+        <summary>Distribuição e idioma</summary>
+
+        <label class="campo campo-com-margem">
+          <span>Onde saiu (separe por vírgula)</span>
+          <input type="text" id="manual-onde-saiu" placeholder="Ex: Netflix, Telegram" />
+        </label>
+
+        <div class="generos-rapidos" id="onde-saiu-rapidos">
+          <button type="button" class="chip-genero-rapido" data-valor="Telegram">+ Telegram</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Netflix">+ Netflix</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Amazon">+ Amazon</button>
+          <button type="button" class="chip-genero-rapido" data-valor="YouTube">+ YouTube</button>
+          <button type="button" class="chip-genero-rapido" data-valor="TikTok">+ TikTok</button>
+          <button type="button" class="chip-genero-rapido" data-valor="BonusTV">+ BonusTV</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Mololo">+ Mololo</button>
+          <button type="button" class="chip-genero-rapido" data-valor="FreeReels">+ FreeReels</button>
+          <button type="button" class="chip-genero-rapido" data-valor="SuaNovela">+ SuaNovela</button>
+          <button type="button" class="chip-genero-rapido" data-valor="SuperCine.TV">+ SuperCine.TV</button>
+          <button type="button" class="chip-genero-rapido" data-valor="FordBrowser">+ FordBrowser</button>
+          <button type="button" class="chip-genero-rapido" data-valor="PineDrama">+ PineDrama</button>
+        </div>
+
+        <label class="campo campo-com-margem">
+          <span>Áudio</span>
+          <select id="manual-audio">
+            <option value="">Não informado</option>
+            <option value="dublado">Dublado</option>
+            <option value="legendado">Apenas legendado</option>
+            <option value="dublado_legendado">Dublado &amp; Legendado</option>
+          </select>
+        </label>
+      </details>
+
+      <details class="secao-colapsavel">
+        <summary>Elenco principal</summary>
+
+        <label class="campo campo-com-margem">
+          <span>Adicionar ator/atriz</span>
+          <div class="campo-com-acao">
+            <input type="text" id="manual-elenco-input" list="lista-atores-sugestoes" placeholder="Nome do ator ou atriz" />
+            <button type="button" class="btn-secundario" id="btn-add-elenco">+ Adicionar</button>
+          </div>
+          <datalist id="lista-atores-sugestoes"></datalist>
+        </label>
+        <div class="elenco-chips" id="elenco-chips"></div>
+      </details>
+
+      <label class="campo campo-com-margem">
         <span>Sinopse</span>
         <textarea id="manual-sinopse" rows="3" placeholder="Sobre o que é..."></textarea>
       </label>

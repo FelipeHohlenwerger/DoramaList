@@ -576,6 +576,114 @@ input, select, textarea {
   font-size: 12.5px;
 }
 
+/* ===================== SEÇÕES COLAPSÁVEIS DO FORMULÁRIO ===================== */
+.secao-colapsavel {
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-peq);
+  margin-bottom: 14px;
+  padding: 0 12px;
+  background: rgba(255,255,255,0.015);
+}
+.secao-colapsavel[open] { padding-bottom: 12px; }
+.secao-colapsavel summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cor-texto);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.secao-colapsavel summary::-webkit-details-marker { display: none; }
+.secao-colapsavel summary::after {
+  content: '▾';
+  color: var(--cor-texto-fraco);
+  transition: transform 0.15s;
+}
+.secao-colapsavel[open] summary::after { transform: rotate(180deg); }
+.secao-colapsavel .campo:first-of-type,
+.campo-com-margem { margin-top: 4px; }
+
+.campo-busca-chips {
+  width: 100%;
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-peq);
+  color: var(--cor-texto);
+  padding: 9px 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  outline: none;
+}
+.campo-busca-chips:focus { border-color: var(--cor-acento); }
+
+/* ===================== ELENCO ===================== */
+.elenco-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.elenco-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-linha);
+  color: var(--cor-texto);
+  padding: 6px 6px 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.elenco-chip button {
+  background: var(--cor-superficie-alta);
+  border: none;
+  color: var(--cor-texto-fraco);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.elenco-ator-clicavel {
+  background: var(--cor-superficie-alta);
+  border: 1px solid var(--cor-linha);
+  color: var(--cor-texto);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.elenco-ator-clicavel:active { transform: scale(0.96); }
+
+.filtro-elenco-ativo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--cor-acento-fraco);
+  border: 1px solid var(--cor-acento);
+  color: var(--cor-acento);
+  padding: 8px 12px;
+  border-radius: var(--raio-peq);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.filtro-elenco-ativo button {
+  background: none;
+  border: none;
+  color: var(--cor-acento);
+  font-size: 18px;
+  line-height: 1;
+}
+
 /* ===================== FORMULÁRIO ===================== */
 .campo {
   display: flex;

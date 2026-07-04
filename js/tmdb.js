@@ -153,10 +153,23 @@ function paisParaIdioma(pais) {
   return mapa[pais] || IDIOMAS_ALVO.join('|');
 }
 
-// Busca detalhes completos para importar (gêneros, sinopse completa, episódios etc.)
+// Busca detalhes completos para importar (gêneros, sinopse completa, episódios,
+// elenco principal e país de origem). Usa append_to_response=credits para trazer
+// o elenco na mesma chamada, sem gastar uma requisição extra.
 async function buscarDetalhes(tmdbId, tipo) {
   const endpoint = tipo === 'serie' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`;
-  const dados = await chamarTmdb(endpoint);
+  const dados = await chamarTmdb(endpoint, { append_to_response: 'credits' });
+
+  const elenco = ((dados.credits && dados.credits.cast) || [])
+    .slice(0, 8)
+    .map((c) => c.name)
+    .filter(Boolean);
+
+  const paisCodigo = dados.origin_country && dados.origin_country[0];
+  const pais =
+    (paisCodigo && MAPA_PAIS_LABEL[paisCodigo]) ||
+    (dados.production_countries && dados.production_countries[0] && dados.production_countries[0].name) ||
+    '';
 
   return {
     tmdbId: dados.id,
@@ -167,8 +180,14 @@ async function buscarDetalhes(tmdbId, tipo) {
     poster: dados.poster_path ? TMDB_IMG_BASE_GRANDE + dados.poster_path : null,
     ano: extrairAno(tipo === 'serie' ? dados.first_air_date : dados.release_date),
     generos: (dados.genres || []).map((g) => g.name),
+    subgeneros: [],
     totalEpisodios: tipo === 'serie' ? (dados.number_of_episodes || null) : null,
     episodiosVistos: 0,
+    elenco,
+    pais,
+    ondeSaiu: [],
+    audio: '',
+    avaliacaoTmdb: dados.vote_average || null,
     status: 'quero_assistir',
     nota: null,
     resenha: '',
