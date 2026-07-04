@@ -255,6 +255,7 @@ function prepararEventos() {
   document.getElementById('btn-limpar-filtro-elenco').addEventListener('click', () => {
     estado.filtroElenco = null;
     document.getElementById('filtro-elenco-ativo').classList.add('oculto');
+    document.getElementById('filtro-elenco-foto').classList.add('oculto');
     renderizarLista();
   });
 
@@ -548,9 +549,19 @@ function renderizarPreviewHtml(t) {
   `;
 }
 
-function filtrarPorAtor(nome) {
+function filtrarPorAtor(nome, foto) {
   estado.filtroElenco = nome;
   document.getElementById('filtro-elenco-nome').textContent = nome;
+
+  const fotoEl = document.getElementById('filtro-elenco-foto');
+  if (foto) {
+    fotoEl.src = foto;
+    fotoEl.classList.remove('oculto');
+  } else {
+    fotoEl.classList.add('oculto');
+    fotoEl.src = '';
+  }
+
   document.getElementById('filtro-elenco-ativo').classList.remove('oculto');
   fecharModal('modal-detalhes');
   if (estado.abaAtiva !== 'biblioteca') {
@@ -695,11 +706,19 @@ function renderizarDetalhesHtml(t) {
     ? `
       <div class="detalhes-bloco">
         <div class="detalhes-bloco-titulo">Elenco principal</div>
-        <div class="detalhes-generos">
+        <div class="elenco-galeria">
           ${(t.elenco || []).map((ator) => {
             const nome = nomeDoAtor(ator);
             const foto = fotoDoAtor(ator);
-            return `<button type="button" class="elenco-ator-clicavel" data-ator="${escapeHtml(nome)}">${foto ? `<img class="elenco-ator-foto" src="${foto}" alt="" />` : ''}${escapeHtml(nome)}</button>`;
+            const iniciais = nome.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+            return `
+              <button type="button" class="elenco-card" data-ator="${escapeHtml(nome)}" data-ator-foto="${escapeHtml(foto || '')}">
+                ${foto
+                  ? `<img class="elenco-card-foto" src="${foto}" alt="" />`
+                  : `<div class="elenco-card-foto-vazia">${escapeHtml(iniciais)}</div>`}
+                <span class="elenco-card-nome">${escapeHtml(nome)}</span>
+              </button>
+            `;
           }).join('')}
         </div>
       </div>
@@ -837,8 +856,8 @@ function prepararEventosDetalhes(titulo) {
   });
 
   // Elenco: clicar num ator filtra a biblioteca por ele
-  container.querySelectorAll('.elenco-ator-clicavel').forEach((btn) => {
-    btn.addEventListener('click', () => filtrarPorAtor(btn.dataset.ator));
+  container.querySelectorAll('.elenco-card').forEach((btn) => {
+    btn.addEventListener('click', () => filtrarPorAtor(btn.dataset.ator, btn.dataset.atorFoto));
   });
 
   // Editar dados (reaproveita modal manual)

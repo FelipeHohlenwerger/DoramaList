@@ -4,7 +4,7 @@
 // Isso garante que atualizações do app cheguem ao usuário sem precisar
 // desinstalar o PWA. Chamadas à API do TMDB nunca são cacheadas.
 
-const CACHE_NAME = 'folhas-cache-v5';
+const CACHE_NAME = 'folhas-cache-v6';
 const ARQUIVOS_ESTATICOS = [
   './',
   './index.html',
