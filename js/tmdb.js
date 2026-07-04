@@ -153,17 +153,15 @@ function paisParaIdioma(pais) {
   return mapa[pais] || IDIOMAS_ALVO.join('|');
 }
 
-// Busca detalhes completos para importar (gêneros, sinopse completa, episódios,
-// elenco principal e país de origem). Usa append_to_response=credits para trazer
-// o elenco na mesma chamada, sem gastar uma requisição extra.
+// Busca detalhes completos para importar (gêneros, sinopse completa, episódios
+// e país de origem). O elenco NÃO é preenchido automaticamente: o campo "name"
+// de atores no TMDB é preenchido por quem cadastrou cada pessoa na base, e
+// para atores chineses/taiwaneses/de Hong Kong é comum vir em script original
+// (não romanizado), o que fica difícil de ler. Por isso o elenco é sempre
+// cadastro manual — veja app.js.
 async function buscarDetalhes(tmdbId, tipo) {
   const endpoint = tipo === 'serie' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`;
-  const dados = await chamarTmdb(endpoint, { append_to_response: 'credits' });
-
-  const elenco = ((dados.credits && dados.credits.cast) || [])
-    .slice(0, 8)
-    .map((c) => c.name)
-    .filter(Boolean);
+  const dados = await chamarTmdb(endpoint);
 
   const paisCodigo = dados.origin_country && dados.origin_country[0];
   const pais =
@@ -183,7 +181,7 @@ async function buscarDetalhes(tmdbId, tipo) {
     subgeneros: [],
     totalEpisodios: tipo === 'serie' ? (dados.number_of_episodes || null) : null,
     episodiosVistos: 0,
-    elenco,
+    elenco: [],
     pais,
     ondeSaiu: [],
     audio: '',

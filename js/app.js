@@ -241,6 +241,11 @@ function prepararEventos() {
     }
   });
   document.getElementById('elenco-chips').addEventListener('click', (e) => {
+    const btnFoto = e.target.closest('[data-buscar-foto]');
+    if (btnFoto) {
+      buscarFotoAtor(btnFoto.dataset.buscarFoto);
+      return;
+    }
     const btnRemover = e.target.closest('[data-remover-ator]');
     if (!btnRemover) return;
     removerAtor(btnRemover.dataset.removerAtor);
@@ -519,17 +524,6 @@ function renderizarPreviewHtml(t) {
     .map((g) => `<span class="tag-genero">${escapeHtml(g)}</span>`)
     .join('');
 
-  const elencoHtml = (t.elenco || []).length
-    ? `
-      <div class="detalhes-bloco">
-        <div class="detalhes-bloco-titulo">Elenco principal</div>
-        <div class="detalhes-generos">
-          ${(t.elenco || []).map((nome) => `<span class="tag-genero">${escapeHtml(nome)}</span>`).join('')}
-        </div>
-      </div>
-    `
-    : '';
-
   return `
     <div class="detalhes-topo">
       ${t.poster
@@ -546,7 +540,7 @@ function renderizarPreviewHtml(t) {
 
     ${t.sinopse ? `<p class="detalhes-sinopse">${escapeHtml(t.sinopse)}</p>` : '<p class="detalhes-sinopse">Sinopse não disponível.</p>'}
 
-    ${elencoHtml}
+    <p class="detalhes-sinopse" style="font-size:12px;opacity:0.7">Elenco não vem do TMDB — adicione manualmente depois de importar, se quiser.</p>
 
     <div class="modal-acoes">
       <button type="button" class="btn-primario" id="preview-btn-adicionar" style="width:100%">+ Adicionar à minha lista</button>
@@ -601,7 +595,7 @@ function obterTitulosFiltrados() {
   }
   if (estado.filtroElenco) {
     const alvo = estado.filtroElenco.toLowerCase();
-    lista = lista.filter((t) => (t.elenco || []).some((n) => n.toLowerCase() === alvo));
+    lista = lista.filter((t) => (t.elenco || []).some((a) => nomeDoAtor(a).toLowerCase() === alvo));
   }
 
   switch (estado.ordenacao) {
@@ -702,7 +696,11 @@ function renderizarDetalhesHtml(t) {
       <div class="detalhes-bloco">
         <div class="detalhes-bloco-titulo">Elenco principal</div>
         <div class="detalhes-generos">
-          ${(t.elenco || []).map((nome) => `<button type="button" class="elenco-ator-clicavel" data-ator="${escapeHtml(nome)}">${escapeHtml(nome)}</button>`).join('')}
+          ${(t.elenco || []).map((ator) => {
+            const nome = nomeDoAtor(ator);
+            const foto = fotoDoAtor(ator);
+            return `<button type="button" class="elenco-ator-clicavel" data-ator="${escapeHtml(nome)}">${foto ? `<img class="elenco-ator-foto" src="${foto}" alt="" />` : ''}${escapeHtml(nome)}</button>`;
+          }).join('')}
         </div>
       </div>
     `
@@ -966,20 +964,39 @@ function duplicarUltimoCadastro() {
 }
 
 // ===================== ELENCO (formulário) =====================
+// Cada ator é sempre cadastro manual: { nome, foto (url ou null) }.
+// Isso evita o problema de nomes vindos do TMDB em script não-latino para
+// atores chineses/taiwaneses/de Hong Kong, cuja romanização a base deles
+// não garante de forma consistente.
 
 // Lista de atores do título sendo cadastrado/editado no momento (estado local
 // do formulário, sincronizado com o campo oculto ao salvar).
 let elencoAtualForm = [];
 
+// Aceita tanto o formato antigo (string simples) quanto o novo ({nome, foto})
+// para não quebrar títulos salvos antes desta versão.
+function nomeDoAtor(item) {
+  return typeof item === 'string' ? item : (item && item.nome) || '';
+}
+function fotoDoAtor(item) {
+  return (item && typeof item === 'object' && item.foto) || null;
+}
+
 function renderizarChipsElenco() {
   const container = document.getElementById('elenco-chips');
   container.innerHTML = elencoAtualForm
-    .map((nome) => `
-      <span class="elenco-chip">
-        ${escapeHtml(nome)}
-        <button type="button" data-remover-ator="${escapeHtml(nome)}" aria-label="Remover">×</button>
-      </span>
-    `)
+    .map((ator) => {
+      const nome = nomeDoAtor(ator);
+      const foto = fotoDoAtor(ator);
+      return `
+        <span class="elenco-chip">
+          ${foto ? `<img class="elenco-chip-foto" src="${foto}" alt="" />` : ''}
+          ${escapeHtml(nome)}
+          <button type="button" class="elenco-chip-foto-btn" data-buscar-foto="${escapeHtml(nome)}" title="Adicionar/trocar foto">📷</button>
+          <button type="button" data-remover-ator="${escapeHtml(nome)}" aria-label="Remover">×</button>
+        </span>
+      `;
+    })
     .join('');
 }
 
@@ -987,8 +1004,8 @@ function adicionarAtorDoInput() {
   const input = document.getElementById('manual-elenco-input');
   const nome = input.value.trim();
   if (!nome) return;
-  if (!elencoAtualForm.some((n) => n.toLowerCase() === nome.toLowerCase())) {
-    elencoAtualForm.push(nome);
+  if (!elencoAtualForm.some((a) => nomeDoAtor(a).toLowerCase() === nome.toLowerCase())) {
+    elencoAtualForm.push({ nome, foto: null });
     renderizarChipsElenco();
   }
   input.value = '';
@@ -996,17 +1013,37 @@ function adicionarAtorDoInput() {
 }
 
 function removerAtor(nome) {
-  elencoAtualForm = elencoAtualForm.filter((n) => n !== nome);
+  elencoAtualForm = elencoAtualForm.filter((a) => nomeDoAtor(a) !== nome);
   renderizarChipsElenco();
+}
+
+// Abre uma busca de imagens do Google para o ator e pede a URL escolhida —
+// mesmo padrão usado para o poster do título.
+function buscarFotoAtor(nome) {
+  const query = encodeURIComponent(`${nome} ator foto`);
+  window.open(`https://www.google.com/search?q=${query}&tbm=isch`, '_blank');
+
+  const url = window.prompt(`Cole a URL da foto de ${nome}:`);
+  if (!url) return;
+
+  const ator = elencoAtualForm.find((a) => nomeDoAtor(a) === nome);
+  if (ator) {
+    if (typeof ator === 'string') {
+      elencoAtualForm = elencoAtualForm.map((a) => (a === ator ? { nome, foto: url.trim() } : a));
+    } else {
+      ator.foto = url.trim();
+    }
+    renderizarChipsElenco();
+  }
 }
 
 // Popula o <datalist> com nomes de atores já usados em qualquer título da
 // biblioteca, para sugerir consistência de grafia ao digitar.
 function popularSugestoesAtores() {
   const nomes = new Set();
-  estado.titulos.forEach((t) => (t.elenco || []).forEach((n) => nomes.add(n)));
+  estado.titulos.forEach((t) => (t.elenco || []).forEach((a) => nomes.add(nomeDoAtor(a))));
   const datalist = document.getElementById('lista-atores-sugestoes');
-  datalist.innerHTML = Array.from(nomes).sort()
+  datalist.innerHTML = Array.from(nomes).filter(Boolean).sort()
     .map((n) => `<option value="${escapeHtml(n)}"></option>`)
     .join('');
 }
@@ -1044,7 +1081,9 @@ function abrirModalManual(tituloExistente = null) {
   gerSubgeneros.definirLista(tituloExistente ? (tituloExistente.subgeneros || []) : []);
   gerOndeSaiu.definirLista(ondeSaiuInicial);
 
-  elencoAtualForm = tituloExistente ? [...(tituloExistente.elenco || [])] : [];
+  elencoAtualForm = tituloExistente
+    ? (tituloExistente.elenco || []).map((a) => (typeof a === 'string' ? { nome: a, foto: null } : { ...a }))
+    : [];
   renderizarChipsElenco();
   document.getElementById('manual-elenco-input').value = '';
 
