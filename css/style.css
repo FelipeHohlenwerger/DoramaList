@@ -431,6 +431,7 @@ input, select, textarea {
 .tag-quero_assistir { background: rgba(232,196,104,0.85); color: #1a1115; }
 .tag-assistindo { background: rgba(255,92,71,0.88); color: #1a1115; }
 .tag-assistido { background: rgba(110,200,150,0.88); color: #102015; }
+.tag-dropei { background: rgba(150,150,150,0.85); color: #1a1115; }
 
 .card-nota {
   position: absolute;

@@ -4,6 +4,7 @@ const STATUS_LABEL = {
   quero_assistir: 'Quero assistir',
   assistindo: 'Assistindo',
   assistido: 'Assistido',
+  dropei: 'Dropei',
 };
 
 const TIPO_LABEL = {
@@ -56,7 +57,9 @@ const SUBGENEROS = [
 // do campo "Onde saiu".
 const PLATAFORMAS_COMUNS = [
   'Telegram', 'Netflix', 'Amazon', 'YouTube', 'TikTok', 'BonusTV', 'Mololo',
-  'FreeReels', 'SuaNovela', 'SuperCine.TV', 'FordBrowser', 'PineDrama',
+  'FreeReels', 'SuaNovela', 'SuperCine.TV', 'FordBrowser', 'PineDrama', 'DramaBox', 'DramaRush',
+  'DramaWave', 'DotDrama', 'FlickReels', 'GoodShort', 'iDrama', 'MeloShort', 'NetShort', 'ReelShort', 
+  'SodaReels', 'StardustTV', 'SnackTV', 'ShortMax', 'VIKI'
 ];
 
 let estado = {
