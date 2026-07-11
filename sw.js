@@ -4,11 +4,13 @@
 // Isso garante que atualizações do app cheguem ao usuário sem precisar
 // desinstalar o PWA. Chamadas à API do TMDB nunca são cacheadas.
 
-const CACHE_NAME = 'folhas-cache-v7';
+const CACHE_NAME = 'folhas-cache-v8';
 const ARQUIVOS_ESTATICOS = [
   './',
   './index.html',
   './css/style.css',
+  './js/firebase-config.js',
+  './js/auth.js',
   './js/app.js',
   './js/db.js',
   './js/tmdb.js',

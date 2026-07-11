@@ -9,10 +9,69 @@
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="stylesheet" href="css/style.css" />
+
+<!-- Firebase (compat SDK — funciona com scripts clássicos, sem precisar de módulos ES) -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-<div class="app-shell">
+<!-- ===================== TELA: CONFIGURAR SINCRONIZAÇÃO (primeira vez) ===================== -->
+<div id="tela-config-firebase" class="tela-gate oculto">
+  <div class="gate-card">
+    <div class="gate-brand">
+      <span class="brand-mark">葉</span>
+      <h1>Folhas</h1>
+    </div>
+    <h2 class="gate-titulo">Configurar sincronização</h2>
+    <p class="gate-texto">
+      Para sincronizar seus dados entre dispositivos, cole abaixo a configuração
+      do seu projeto Firebase (o bloco <code>firebaseConfig</code> que aparece
+      quando você cria um app web no console do Firebase).
+    </p>
+    <textarea id="config-firebase-texto" class="gate-textarea" rows="8" placeholder='const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  ...
+};'></textarea>
+    <p id="config-firebase-erro" class="gate-erro oculto"></p>
+    <button class="btn-primario gate-btn" id="btn-salvar-config-firebase">Salvar e continuar</button>
+    <p class="gate-ajuda">
+      Não sabe onde encontrar isso? No
+      <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console do Firebase</a>,
+      crie um projeto → adicione um app da Web → o código aparece na hora.
+    </p>
+  </div>
+</div>
+
+<!-- ===================== TELA: LOGIN / CRIAR CONTA ===================== -->
+<div id="tela-login" class="tela-gate oculto">
+  <div class="gate-card">
+    <div class="gate-brand">
+      <span class="brand-mark">葉</span>
+      <h1>Folhas</h1>
+    </div>
+    <h2 class="gate-titulo" id="login-titulo">Entrar</h2>
+
+    <label class="campo">
+      <span>E-mail</span>
+      <input type="email" id="login-email" autocomplete="username" placeholder="seu@email.com" />
+    </label>
+    <label class="campo">
+      <span>Senha</span>
+      <input type="password" id="login-senha" autocomplete="current-password" placeholder="Sua senha" />
+    </label>
+
+    <p id="login-erro" class="gate-erro oculto"></p>
+
+    <button class="btn-primario gate-btn" id="btn-login-entrar">Entrar</button>
+    <button class="btn-secundario gate-btn" id="btn-login-alternar">Ainda não tenho conta — criar conta</button>
+  </div>
+</div>
+
+<div class="app-shell oculto" id="app-shell-principal">
 
   <!-- ===================== HEADER ===================== -->
   <header class="topbar">
@@ -307,6 +366,16 @@
     <h2 class="modal-titulo">Configurações</h2>
 
     <div class="config-secao">
+      <h3>Conta e sincronização</h3>
+      <p class="config-texto">Conectado como <strong id="config-email-logado">—</strong>. Seus dados sincronizam automaticamente entre os dispositivos onde você fizer login com essa conta.</p>
+      <div class="config-acoes-linha">
+        <button class="btn-secundario" id="btn-sair-conta">Sair da conta</button>
+        <button class="btn-secundario" id="btn-trocar-projeto-firebase">Trocar projeto Firebase</button>
+      </div>
+      <p id="status-conta" class="config-status"></p>
+    </div>
+
+    <div class="config-secao">
       <h3>API do TMDB</h3>
       <p class="config-texto">Cole sua chave de API (v3) do themoviedb.org para poder buscar e importar títulos automaticamente.</p>
       <label class="campo">
@@ -337,13 +406,15 @@
 
     <div class="config-secao">
       <h3>Sobre</h3>
-      <p class="config-texto">Folhas — diário pessoal de doramas. Os dados ficam salvos apenas neste dispositivo/navegador.</p>
+      <p class="config-texto">Folhas — diário pessoal de doramas, sincronizado com sua conta.</p>
     </div>
   </div>
 </div>
 
 <div id="toast" class="toast oculto"></div>
 
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/tmdb.js"></script>
 <script src="js/app.js"></script>

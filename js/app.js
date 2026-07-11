@@ -77,14 +77,139 @@ let estado = {
 
 // ===================== INICIALIZAÇÃO =====================
 
-document.addEventListener('DOMContentLoaded', async () => {
+let appJaIniciado = false;
+let cancelarEscutaFirestore = null;
+
+document.addEventListener('DOMContentLoaded', () => {
   registrarServiceWorker();
+  prepararEventosGating();
+  iniciarFluxoDeAcesso();
+});
+
+// Decide qual tela mostrar primeiro: configurar Firebase (nunca configurado
+// neste navegador), login (configurado mas não autenticado), ou o app
+// principal (já autenticado).
+function iniciarFluxoDeAcesso() {
+  if (!window.FolhasFirebase.estaConfigurado()) {
+    mostrarTela('tela-config-firebase');
+    return;
+  }
+
+  try {
+    window.FolhasFirebase.inicializar();
+  } catch (err) {
+    document.getElementById('config-firebase-erro').textContent =
+      'Não foi possível iniciar o Firebase: ' + err.message;
+    document.getElementById('config-firebase-erro').classList.remove('oculto');
+    mostrarTela('tela-config-firebase');
+    return;
+  }
+
+  window.FolhasAuth.aoMudarEstado((usuario) => {
+    if (usuario) {
+      mostrarTela('app-shell-principal');
+      document.getElementById('config-email-logado').textContent = usuario.email || '—';
+      iniciarAppParaUsuarioLogado();
+    } else {
+      if (cancelarEscutaFirestore) {
+        cancelarEscutaFirestore();
+        cancelarEscutaFirestore = null;
+      }
+      mostrarTela('tela-login');
+    }
+  });
+}
+
+// Esconde as três telas possíveis (config, login, app) e mostra só a pedida.
+function mostrarTela(idTelaVisivel) {
+  ['tela-config-firebase', 'tela-login', 'app-shell-principal'].forEach((id) => {
+    document.getElementById(id).classList.toggle('oculto', id !== idTelaVisivel);
+  });
+}
+
+// Roda a inicialização normal do app (dados, listeners específicos de tela
+// principal) — chamada toda vez que um login bem-sucedido acontece. Os
+// listeners de UI gerais (prepararEventos) só são registrados uma vez.
+async function iniciarAppParaUsuarioLogado() {
+  if (!appJaIniciado) {
+    appJaIniciado = true;
+    prepararEventos();
+  }
+
   await carregarTitulos();
   popularFiltroGeneros();
   renderizarLista();
-  prepararEventos();
   carregarApiKeyNaTela();
-});
+
+  if (cancelarEscutaFirestore) {
+    cancelarEscutaFirestore();
+  }
+  cancelarEscutaFirestore = window.DoramaDB.escutarMudancas((titulosAtualizados) => {
+    estado.titulos = titulosAtualizados;
+    popularFiltroGeneros();
+    renderizarLista();
+  });
+}
+
+// Eventos das telas de configuração do Firebase e de login — registrados uma
+// única vez, independentemente de estar logado ou não.
+function prepararEventosGating() {
+  document.getElementById('btn-salvar-config-firebase').addEventListener('click', () => {
+    const texto = document.getElementById('config-firebase-texto').value.trim();
+    const erroEl = document.getElementById('config-firebase-erro');
+    erroEl.classList.add('oculto');
+
+    if (!texto) {
+      erroEl.textContent = 'Cole a configuração do Firebase antes de continuar.';
+      erroEl.classList.remove('oculto');
+      return;
+    }
+
+    try {
+      const config = window.FolhasFirebase.extrairConfigDoTexto(texto);
+      window.FolhasFirebase.salvarConfig(config);
+      window.location.reload();
+    } catch (err) {
+      erroEl.textContent = err.message;
+      erroEl.classList.remove('oculto');
+    }
+  });
+
+  let modoCadastro = false;
+
+  document.getElementById('btn-login-alternar').addEventListener('click', () => {
+    modoCadastro = !modoCadastro;
+    document.getElementById('login-titulo').textContent = modoCadastro ? 'Criar conta' : 'Entrar';
+    document.getElementById('btn-login-entrar').textContent = modoCadastro ? 'Criar conta' : 'Entrar';
+    document.getElementById('btn-login-alternar').textContent = modoCadastro
+      ? 'Já tenho conta — entrar'
+      : 'Ainda não tenho conta — criar conta';
+    document.getElementById('login-erro').classList.add('oculto');
+  });
+
+  document.getElementById('btn-login-entrar').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const senha = document.getElementById('login-senha').value;
+    const erroEl = document.getElementById('login-erro');
+    erroEl.classList.add('oculto');
+
+    if (!email || !senha) {
+      erroEl.textContent = 'Preencha e-mail e senha.';
+      erroEl.classList.remove('oculto');
+      return;
+    }
+
+    const resultado = modoCadastro
+      ? await window.FolhasAuth.cadastrar(email, senha)
+      : await window.FolhasAuth.login(email, senha);
+
+    if (!resultado.sucesso) {
+      erroEl.textContent = resultado.mensagem;
+      erroEl.classList.remove('oculto');
+    }
+    // Em caso de sucesso, aoMudarEstado() cuida da transição de tela.
+  });
+}
 
 function registrarServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -296,6 +421,28 @@ function prepararEventos() {
   });
   document.getElementById('input-importar-arquivo').addEventListener('change', importarBackup);
   document.getElementById('btn-verificar-atualizacao').addEventListener('click', verificarAtualizacao);
+
+  // Conta e sincronização
+  document.getElementById('btn-sair-conta').addEventListener('click', async () => {
+    fecharModal('modal-config');
+    await window.FolhasAuth.logout();
+    // A troca de tela (para login) acontece automaticamente via aoMudarEstado.
+  });
+
+  document.getElementById('btn-trocar-projeto-firebase').addEventListener('click', async () => {
+    const confirmar = confirm(
+      'Isso vai desconectar sua conta atual e pedir a configuração de um novo projeto Firebase.\n\n' +
+      'Seus dados continuam salvos no projeto anterior — você só está trocando para qual projeto o app se conecta. Deseja continuar?'
+    );
+    if (!confirmar) return;
+    try {
+      await window.FolhasAuth.logout();
+    } catch (err) {
+      // Ignora erro de logout aqui — vamos limpar a config de qualquer forma.
+    }
+    window.FolhasFirebase.limparConfig();
+    window.location.reload();
+  });
 }
 
 // ===================== BUSCA TMDB =====================

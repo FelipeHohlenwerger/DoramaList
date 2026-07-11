@@ -1075,3 +1075,91 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ===================== TELAS DE ACESSO (config Firebase / login) ===================== */
+.tela-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.gate-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio);
+  padding: 28px 24px;
+  box-shadow: var(--sombra);
+}
+
+.gate-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.gate-brand h1 {
+  font-size: 22px;
+}
+
+.gate-titulo {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.gate-texto {
+  font-size: 13px;
+  color: var(--cor-texto-fraco);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+.gate-texto code {
+  background: var(--cor-fundo);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.gate-textarea {
+  width: 100%;
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-peq);
+  color: var(--cor-texto);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-family: 'Menlo', 'Consolas', monospace;
+  resize: vertical;
+  margin-bottom: 12px;
+  outline: none;
+}
+.gate-textarea:focus { border-color: var(--cor-acento); }
+
+.gate-btn {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.gate-erro {
+  background: rgba(224,128,128,0.1);
+  border: 1px solid #5c2e2e;
+  color: #e08080;
+  padding: 9px 12px;
+  border-radius: var(--raio-peq);
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+
+.gate-ajuda {
+  font-size: 12px;
+  color: var(--cor-texto-fraco);
+  text-align: center;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.gate-ajuda a {
+  color: var(--cor-acento);
+}

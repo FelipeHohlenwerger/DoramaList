@@ -1,102 +1,47 @@
-// db.js — Camada de persistência local usando IndexedDB
-// Guarda os doramas/filmes da biblioteca pessoal do usuário.
+// db.js — Camada de persistência usando Firestore (Firebase).
+// Mantém a MESMA API pública (window.DoramaDB) que existia com IndexedDB,
+// para que o restante do app (app.js) não precise mudar. Os dados agora
+// ficam em: users/{uid}/titulos/{id} — escopados por usuário logado.
 
-const DB_NAME = 'doramalist-db';
-const DB_VERSION = 1;
-const STORE_NAME = 'titulos';
-
-let dbInstance = null;
-
-function abrirDB() {
-  return new Promise((resolve, reject) => {
-    if (dbInstance) return resolve(dbInstance);
-
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        store.createIndex('status', 'status', { unique: false });
-        store.createIndex('tipo', 'tipo', { unique: false });
-        store.createIndex('tmdbId', 'tmdbId', { unique: false });
-        store.createIndex('titulo', 'titulo', { unique: false });
-      }
-    };
-
-    req.onsuccess = (event) => {
-      dbInstance = event.target.result;
-      resolve(dbInstance);
-    };
-
-    req.onerror = (event) => {
-      reject(event.target.error);
-    };
-  });
+function colecaoTitulos() {
+  const usuario = window.FolhasAuth.usuarioAtual();
+  if (!usuario) {
+    throw new Error('Nenhum usuário logado — isso não deveria acontecer aqui.');
+  }
+  return window.firebase.firestore()
+    .collection('users')
+    .doc(usuario.uid)
+    .collection('titulos');
 }
 
-// Estrutura de um "título" salvo na biblioteca pessoal:
+// Estrutura de um "título" salvo na biblioteca pessoal — igual à versão
+// anterior (IndexedDB), sem mudança de formato:
 // {
-//   id: string (uuid interno),
-//   tmdbId: number|null,         -> id na API do TMDB, se veio de lá
-//   tipo: 'serie' | 'filme',
-//   titulo: string,
-//   tituloOriginal: string,
-//   sinopse: string,
-//   poster: string (url ou base64),
-//   ano: number|null,
-//   generos: string[],           -> categorias/gêneros
-//   totalEpisodios: number|null, // só relevante p/ série
-//   episodiosVistos: number,     // progresso, só série
-//   status: 'quero_assistir' | 'assistindo' | 'assistido',
-//   nota: number|null,           // 0-10, só preenchido se assistido
-//   resenha: string,
-//   favorito: boolean,
-//   origemManual: boolean,       // true se cadastrado manualmente (não via TMDB)
-//   criadoEm: string (ISO),
-//   atualizadoEm: string (ISO)
+//   id, tmdbId, tipo, titulo, tituloOriginal, sinopse, poster, ano,
+//   generos, subgeneros, ondeSaiu, audio, pais, elenco,
+//   totalEpisodios, episodiosVistos, status, nota, resenha, favorito,
+//   origemManual, criadoEm, atualizadoEm
 // }
 
 async function salvarTitulo(titulo) {
-  const db = await abrirDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    titulo.atualizadoEm = new Date().toISOString();
-    store.put(titulo);
-    tx.oncomplete = () => resolve(titulo);
-    tx.onerror = (e) => reject(e.target.error);
-  });
+  titulo.atualizadoEm = new Date().toISOString();
+  await colecaoTitulos().doc(titulo.id).set(titulo);
+  return titulo;
 }
 
 async function excluirTitulo(id) {
-  const db = await abrirDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(id);
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = (e) => reject(e.target.error);
-  });
+  await colecaoTitulos().doc(id).delete();
+  return true;
 }
 
 async function buscarTituloPorId(id) {
-  const db = await abrirDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).get(id);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = (e) => reject(e.target.error);
-  });
+  const snap = await colecaoTitulos().doc(id).get();
+  return snap.exists ? snap.data() : null;
 }
 
 async function listarTodosTitulos() {
-  const db = await abrirDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = (e) => reject(e.target.error);
-  });
+  const snap = await colecaoTitulos().get();
+  return snap.docs.map((d) => d.data());
 }
 
 async function existeTmdbId(tmdbId) {
@@ -143,6 +88,21 @@ function gerarId() {
   return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
 }
 
+// Escuta mudanças em tempo real na coleção do usuário — dispara o callback
+// toda vez que algo muda, seja localmente ou sincronizado de outro
+// dispositivo. É isso que faz uma alteração no PC aparecer no celular sem
+// precisar reabrir o app manualmente (se ambos estiverem com internet).
+// Retorna uma função para cancelar a escuta, se necessário.
+function escutarMudancas(callback) {
+  return colecaoTitulos().onSnapshot(
+    (snap) => callback(snap.docs.map((d) => d.data())),
+    () => {
+      // Erro de rede/permissão na escuta: ignora silenciosamente — o app
+      // continua funcionando com os dados já carregados localmente.
+    }
+  );
+}
+
 window.DoramaDB = {
   salvarTitulo,
   excluirTitulo,
@@ -152,4 +112,5 @@ window.DoramaDB = {
   exportarBackupJSON,
   importarBackupJSON,
   gerarId,
+  escutarMudancas,
 };
