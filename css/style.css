@@ -316,6 +316,9 @@ input, select, textarea {
   line-height: 1;
 }
 .card-descobrir-acao:disabled {
+  opacity: 0.6;
+}
+.card-descobrir-acao.adicionado {
   background: rgba(110,200,150,0.92);
   color: #102015;
 }
@@ -366,6 +369,58 @@ input, select, textarea {
   border-radius: var(--raio-peq);
   font-size: 12.5px;
   flex-shrink: 0;
+}
+
+/* ===================== ESTATÍSTICAS ===================== */
+.estatisticas-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-peq);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  color: var(--cor-texto-fraco);
+}
+.estatisticas-card strong {
+  color: var(--cor-texto);
+  font-weight: 700;
+}
+
+/* ===================== BUSCA INTERNA DA BIBLIOTECA ===================== */
+.busca-biblioteca-wrap {
+  margin-bottom: 12px;
+}
+#busca-biblioteca {
+  width: 100%;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-peq);
+  color: var(--cor-texto);
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#busca-biblioteca:focus { border-color: var(--cor-acento); }
+#busca-biblioteca::placeholder { color: var(--cor-texto-fraco); }
+
+/* ===================== LISTAGEM AGRUPADA (Onde saiu) ===================== */
+.lista-agrupada {
+  display: block !important;
+}
+.grupo-onde-saiu {
+  margin-bottom: 24px;
+}
+.grupo-titulo {
+  font-family: 'Source Serif 4', serif;
+  font-size: 15px;
+  color: var(--cor-texto);
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--cor-linha);
 }
 
 /* ===================== GRID DE TÍTULOS ===================== */
@@ -432,6 +487,7 @@ input, select, textarea {
 .tag-assistindo { background: rgba(255,92,71,0.88); color: #1a1115; }
 .tag-assistido { background: rgba(110,200,150,0.88); color: #102015; }
 .tag-dropei { background: rgba(150,150,150,0.85); color: #1a1115; }
+.tag-procurando { background: rgba(120,150,220,0.85); color: #10151f; }
 
 .card-nota {
   position: absolute;

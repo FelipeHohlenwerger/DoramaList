@@ -109,7 +109,14 @@
     <button class="chip chip-status" data-status="assistindo">Assistindo</button>
     <button class="chip chip-status" data-status="assistido">Assistido</button>
     <button class="chip chip-status" data-status="dropei">Dropei</button>
+    <button class="chip chip-status" data-status="procurando">Procurando</button>
   </nav>
+
+  <div id="estatisticas-card" class="estatisticas-card"></div>
+
+  <div class="busca-biblioteca-wrap">
+    <input type="text" id="busca-biblioteca" placeholder="🔎 Buscar na sua lista..." autocomplete="off" />
+  </div>
 
   <div class="filtros-secundarios">
     <select id="filtro-genero" class="select-genero">
@@ -131,6 +138,27 @@
       <option value="alfabetica">A–Z</option>
       <option value="nota">Melhor avaliados</option>
       <option value="ano">Ano de lançamento</option>
+      <option value="onde_saiu">Agrupar por Onde saiu</option>
+    </select>
+  </div>
+
+  <div class="filtros-secundarios">
+    <select id="filtro-regiao" class="select-genero">
+      <option value="">Oriental e ocidental</option>
+      <option value="oriental">Só oriental</option>
+      <option value="ocidental">Só ocidental</option>
+    </select>
+    <select id="filtro-onde-saiu" class="select-genero">
+      <option value="">Todas as plataformas</option>
+    </select>
+    <select id="filtro-subgenero" class="select-genero">
+      <option value="">Todos os subgêneros</option>
+    </select>
+    <select id="filtro-audio" class="select-genero">
+      <option value="">Todos os áudios</option>
+      <option value="dublado">Dublado</option>
+      <option value="legendado">Apenas legendado</option>
+      <option value="dublado_legendado">Dublado &amp; Legendado</option>
     </select>
   </div>
 
@@ -319,6 +347,7 @@
           <button type="button" class="chip-genero-rapido" data-valor="FordBrowser">+ FordBrowser</button>
           <button type="button" class="chip-genero-rapido" data-valor="PineDrama">+ PineDrama</button>
           <button type="button" class="chip-genero-rapido" data-valor="DramaBox">+ DramaBox</button>
+          <button type="button" class="chip-genero-rapido" data-valor="Disney">+ Disney</button>
 
         </div>
 
@@ -367,6 +396,7 @@
           <option value="assistindo">Assistindo</option>
           <option value="assistido">Assistido</option>
           <option value="dropei">Dropei</option>
+          <option value="procurando">Procurando</option>
         </select>
       </label>
 

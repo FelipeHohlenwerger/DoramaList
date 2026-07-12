@@ -5,10 +5,8 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w342';
 const TMDB_IMG_BASE_GRANDE = 'https://image.tmdb.org/t/p/w780';
 
-// Países/idiomas considerados "dorama" para fins de filtro.
-// Séries usam origin_country; filmes (que não retornam origin_country na busca)
-// usam original_language como proxy.
-const PAISES_ALVO = ['KR', 'JP', 'CN', 'TH', 'TW', 'HK'];
+// Idiomas usados como proxy para país quando filtramos filmes por região
+// específica no Descobrir (filmes não retornam origin_country na busca).
 const IDIOMAS_ALVO = ['ko', 'ja', 'zh', 'th'];
 
 function getApiKey() {
@@ -41,32 +39,8 @@ async function chamarTmdb(endpoint, params = {}) {
   return resp.json();
 }
 
-function ehProducaoAsiatica(r, tipo) {
-  // original_language é o critério mais confiável: é fixo por título e reflete
-  // o idioma em que a obra foi originalmente roteirizada/falada.
-  // origin_country pode listar múltiplos países de exibição/co-produção e
-  // gerar falsos positivos (ex.: séries americanas antigas com versão/exibição
-  // asiática listada). Por isso exigimos os dois critérios concordando,
-  // OU usamos só o idioma quando origin_country vier vazio.
-  const idiomaOk = IDIOMAS_ALVO.includes(r.original_language);
-
-  if (tipo === 'serie') {
-    const paises = r.origin_country || [];
-    const paisOk = paises.some((p) => PAISES_ALVO.includes(p));
-    if (paises.length === 0) return idiomaOk;
-    // Exige concordância entre país de origem E idioma original.
-    // Isso elimina casos como "Friends" (US, en) que às vezes aparecem
-    // com country contaminado, e também elimina remakes locais com nomes
-    // parecidos mas idioma diferente do original buscado.
-    return paisOk && idiomaOk;
-  }
-
-  // Filmes não trazem origin_country na busca; usamos só o idioma original.
-  return idiomaOk;
-}
-
-// Busca tanto em "tv" quanto em "movie", retornando apenas produções
-// de origem asiática (Coreia, Japão, China, Taiwan, Hong Kong, Tailândia).
+// Busca tanto em "tv" quanto em "movie", sem restringir por país/idioma —
+// o catálogo agora é geral (qualquer filme/série do mundo), não só doramas.
 async function buscarTitulos(query) {
   if (!query || query.trim().length < 2) return [];
 
@@ -75,13 +49,8 @@ async function buscarTitulos(query) {
     chamarTmdb('/search/movie', { query }).catch(() => ({ results: [] })),
   ]);
 
-  const tvs = (tvResp.results || [])
-    .filter((r) => ehProducaoAsiatica(r, 'serie'))
-    .map((r) => normalizarResultadoBusca(r, 'serie'));
-
-  const filmes = (movieResp.results || [])
-    .filter((r) => ehProducaoAsiatica(r, 'filme'))
-    .map((r) => normalizarResultadoBusca(r, 'filme'));
+  const tvs = (tvResp.results || []).map((r) => normalizarResultadoBusca(r, 'serie'));
+  const filmes = (movieResp.results || []).map((r) => normalizarResultadoBusca(r, 'filme'));
 
   const combinados = [...tvs, ...filmes];
   combinados.sort((a, b) => (b.popularidade || 0) - (a.popularidade || 0));
@@ -121,6 +90,31 @@ const MAPA_PAIS_LABEL = {
   TH: 'Tailândia',
   TW: 'Taiwan',
   HK: 'Hong Kong',
+  US: 'Estados Unidos',
+  GB: 'Reino Unido',
+  FR: 'França',
+  DE: 'Alemanha',
+  IT: 'Itália',
+  ES: 'Espanha',
+  PT: 'Portugal',
+  BR: 'Brasil',
+  MX: 'México',
+  AR: 'Argentina',
+  CO: 'Colômbia',
+  CL: 'Chile',
+  CA: 'Canadá',
+  AU: 'Austrália',
+  IN: 'Índia',
+  RU: 'Rússia',
+  TR: 'Turquia',
+  PH: 'Filipinas',
+  ID: 'Indonésia',
+  VN: 'Vietnã',
+  SE: 'Suécia',
+  NO: 'Noruega',
+  DK: 'Dinamarca',
+  NL: 'Holanda',
+  PL: 'Polônia',
 };
 
 async function descobrirTitulos({ tipo = 'serie', pais = '', pagina = 1, ordenarPor = 'popularity.desc' } = {}) {
@@ -131,12 +125,15 @@ async function descobrirTitulos({ tipo = 'serie', pais = '', pagina = 1, ordenar
     'vote_count.gte': 10, // evita títulos obscuros/sem avaliação nenhuma
   };
 
-  if (tipo === 'serie') {
-    params.with_origin_country = pais || PAISES_ALVO.join('|');
-  } else {
-    params.with_original_language = pais
-      ? paisParaIdioma(pais)
-      : IDIOMAS_ALVO.join('|');
+  // Só restringe por país/idioma se um país específico foi escolhido no
+  // filtro do Descobrir. Sem escolha, traz de qualquer lugar do mundo — o
+  // catálogo agora é geral (filmes/séries orientais e ocidentais).
+  if (pais) {
+    if (tipo === 'serie') {
+      params.with_origin_country = pais;
+    } else {
+      params.with_original_language = paisParaIdioma(pais);
+    }
   }
 
   const resp = await chamarTmdb(endpoint, params);

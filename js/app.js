@@ -5,6 +5,7 @@ const STATUS_LABEL = {
   assistindo: 'Assistindo',
   assistido: 'Assistido',
   dropei: 'Dropei',
+  procurando: 'Procurando',
 };
 
 const TIPO_LABEL = {
@@ -59,7 +60,7 @@ const PLATAFORMAS_COMUNS = [
   'Telegram', 'Netflix', 'Amazon', 'YouTube', 'TikTok', 'BonusTV', 'Mololo',
   'FreeReels', 'SuaNovela', 'SuperCine.TV', 'FordBrowser', 'PineDrama', 'DramaBox', 'DramaRush',
   'DramaWave', 'DotDrama', 'FlickReels', 'GoodShort', 'iDrama', 'MeloShort', 'NetShort', 'ReelShort', 
-  'SodaReels', 'StardustTV', 'SnackTV', 'ShortMax', 'VIKI'
+  'SodaReels', 'StardustTV', 'SnackTV', 'ShortMax', 'VIKI', 'Disney'
 ];
 
 let estado = {
@@ -68,6 +69,11 @@ let estado = {
   filtroGenero: '',
   filtroTipo: '',
   filtroElenco: null,
+  filtroRegiao: '',
+  filtroOndeSaiu: '',
+  filtroSubgenero: '',
+  filtroAudio: '',
+  buscaBiblioteca: '',
   ordenacao: 'recente',
   buscaDebounce: null,
   abaAtiva: 'biblioteca',
@@ -77,6 +83,18 @@ let estado = {
     carregando: false,
   },
 };
+
+// Países considerados "oriente" para o filtro de Região — mesmo conjunto que
+// já era usado para o antigo filtro automático de busca, mas agora só serve
+// pra classificar (não pra esconder nada).
+const PAISES_ORIENTAIS = [
+  'Coreia do Sul', 'Japão', 'China', 'Tailândia', 'Taiwan', 'Hong Kong',
+];
+
+function regiaoDoPais(paisTexto) {
+  if (!paisTexto) return null; // sem país informado — não entra em nenhum dos dois filtros
+  return PAISES_ORIENTAIS.includes(paisTexto) ? 'oriental' : 'ocidental';
+}
 
 // ===================== INICIALIZAÇÃO =====================
 
@@ -297,6 +315,33 @@ function prepararEventos() {
 
   document.getElementById('filtro-ordenacao').addEventListener('change', (e) => {
     estado.ordenacao = e.target.value;
+    renderizarLista();
+  });
+
+  document.getElementById('filtro-regiao').addEventListener('change', (e) => {
+    estado.filtroRegiao = e.target.value;
+    renderizarLista();
+  });
+
+  document.getElementById('filtro-onde-saiu').addEventListener('change', (e) => {
+    estado.filtroOndeSaiu = e.target.value;
+    renderizarLista();
+  });
+
+  document.getElementById('filtro-subgenero').addEventListener('change', (e) => {
+    estado.filtroSubgenero = e.target.value;
+    renderizarLista();
+  });
+
+  document.getElementById('filtro-audio').addEventListener('change', (e) => {
+    estado.filtroAudio = e.target.value;
+    renderizarLista();
+  });
+
+  // Busca dentro da própria biblioteca (diferente da busca do TMDB acima) —
+  // filtra instantaneamente sobre os dados já carregados, sem chamada de rede.
+  document.getElementById('busca-biblioteca').addEventListener('input', (e) => {
+    estado.buscaBiblioteca = e.target.value.trim();
     renderizarLista();
   });
 
@@ -621,7 +666,16 @@ async function carregarDescobrir(reiniciar) {
 }
 
 function criarCardDescobrir(r) {
-  const existente = estado.titulos.find((t) => t.tmdbId === r.tmdbId);
+  function existenteAgora() {
+    return estado.titulos.find((t) => t.tmdbId === r.tmdbId) || null;
+  }
+
+  function atualizarBotao(btn) {
+    const existente = existenteAgora();
+    btn.textContent = existente ? '✓' : '+';
+    btn.title = existente ? 'Remover da minha lista' : 'Adicionar à minha lista';
+    btn.classList.toggle('adicionado', !!existente);
+  }
 
   const card = document.createElement('div');
   card.className = 'card-titulo';
@@ -630,9 +684,7 @@ function criarCardDescobrir(r) {
       ${r.poster
         ? `<img src="${r.poster}" alt="" loading="lazy" />`
         : `<div class="card-poster-placeholder">${escapeHtml(r.titulo)}</div>`}
-      <button class="card-descobrir-acao" ${existente ? 'disabled' : ''} title="${existente ? 'Já está na sua lista' : 'Adicionar à minha lista'}">
-        ${existente ? '✓' : '+'}
-      </button>
+      <button type="button" class="card-descobrir-acao"></button>
     </div>
     <div class="card-info">
       <div class="titulo">${escapeHtml(r.titulo)}</div>
@@ -641,20 +693,38 @@ function criarCardDescobrir(r) {
   `;
 
   const btnAcao = card.querySelector('.card-descobrir-acao');
-  if (!existente) {
-    btnAcao.addEventListener('click', async (e) => {
-      e.stopPropagation();
+  atualizarBotao(btnAcao);
+
+  // O botão nunca fica "travado": se já foi adicionado, clicar de novo
+  // pergunta se quer remover — sem precisar ir até a Minha Lista pra isso.
+  btnAcao.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const existente = existenteAgora();
+
+    if (existente) {
+      const confirmar = confirm(`Remover "${existente.titulo}" da sua lista?`);
+      if (!confirmar) return;
       btnAcao.disabled = true;
-      await importarDeTmdb(r.tmdbId, r.tipo);
-      btnAcao.textContent = '✓';
-      btnAcao.title = 'Já está na sua lista';
-    });
-  }
+      await window.DoramaDB.excluirTitulo(existente.id);
+      await carregarTitulos();
+      popularFiltroGeneros();
+      renderizarLista();
+      btnAcao.disabled = false;
+      atualizarBotao(btnAcao);
+      mostrarToast(`"${existente.titulo}" removido da sua lista.`);
+      return;
+    }
+
+    btnAcao.disabled = true;
+    await importarDeTmdb(r.tmdbId, r.tipo);
+    btnAcao.disabled = false;
+    atualizarBotao(btnAcao);
+  });
 
   // Clicar em qualquer outra parte do card abre a prévia (ou os detalhes
   // completos, se o título já tiver sido adicionado à biblioteca).
   card.addEventListener('click', () => {
-    const atual = estado.titulos.find((t) => t.tmdbId === r.tmdbId);
+    const atual = existenteAgora();
     if (atual) {
       abrirModalDetalhes(atual.id);
     } else {
@@ -740,21 +810,30 @@ function filtrarPorAtor(nome, foto) {
 // ===================== RENDERIZAÇÃO DA LISTA =====================
 
 function popularFiltroGeneros() {
-  const select = document.getElementById('filtro-genero');
-  const generosUnicos = new Set();
-  estado.titulos.forEach((t) => (t.generos || []).forEach((g) => generosUnicos.add(g)));
+  popularSelectDinamico('filtro-genero', 'Todas as categorias', (t) => t.generos || []);
+  popularSelectDinamico('filtro-onde-saiu', 'Todas as plataformas', (t) => t.ondeSaiu || []);
+  popularSelectDinamico('filtro-subgenero', 'Todos os subgêneros', (t) => t.subgeneros || []);
+  popularSugestoesAtores();
+}
+
+// Popula um <select> com valores únicos extraídos de todos os títulos (via
+// a função extrair), preservando o valor selecionado quando possível.
+// Reutilizado para categorias, "onde saiu" e subgêneros — todos são campos
+// de múltiplos valores salvos como array em cada título.
+function popularSelectDinamico(idSelect, labelTodos, extrair) {
+  const select = document.getElementById(idSelect);
+  const valoresUnicos = new Set();
+  estado.titulos.forEach((t) => extrair(t).forEach((v) => valoresUnicos.add(v)));
 
   const valorAtual = select.value;
-  select.innerHTML = '<option value="">Todas as categorias</option>';
-  Array.from(generosUnicos).sort().forEach((g) => {
+  select.innerHTML = `<option value="">${labelTodos}</option>`;
+  Array.from(valoresUnicos).sort().forEach((v) => {
     const opt = document.createElement('option');
-    opt.value = g;
-    opt.textContent = g;
+    opt.value = v;
+    opt.textContent = v;
     select.appendChild(opt);
   });
   select.value = valorAtual;
-
-  popularSugestoesAtores();
 }
 
 function obterTitulosFiltrados() {
@@ -772,6 +851,25 @@ function obterTitulosFiltrados() {
   if (estado.filtroElenco) {
     const alvo = estado.filtroElenco.toLowerCase();
     lista = lista.filter((t) => (t.elenco || []).some((a) => nomeDoAtor(a).toLowerCase() === alvo));
+  }
+  if (estado.filtroRegiao) {
+    lista = lista.filter((t) => regiaoDoPais(t.pais) === estado.filtroRegiao);
+  }
+  if (estado.filtroOndeSaiu) {
+    lista = lista.filter((t) => (t.ondeSaiu || []).includes(estado.filtroOndeSaiu));
+  }
+  if (estado.filtroSubgenero) {
+    lista = lista.filter((t) => (t.subgeneros || []).includes(estado.filtroSubgenero));
+  }
+  if (estado.filtroAudio) {
+    lista = lista.filter((t) => t.audio === estado.filtroAudio);
+  }
+  if (estado.buscaBiblioteca) {
+    const termo = estado.buscaBiblioteca.toLowerCase();
+    lista = lista.filter((t) =>
+      (t.titulo || '').toLowerCase().includes(termo) ||
+      (t.tituloOriginal || '').toLowerCase().includes(termo)
+    );
   }
 
   switch (estado.ordenacao) {
@@ -796,15 +894,86 @@ function renderizarLista() {
   const vazio = document.getElementById('estado-vazio');
   const lista = obterTitulosFiltrados();
 
+  atualizarEstatisticas();
+
   if (lista.length === 0) {
     container.innerHTML = '';
+    container.classList.remove('lista-agrupada');
     vazio.classList.remove('oculto');
     return;
   }
   vazio.classList.add('oculto');
 
+  if (estado.ordenacao === 'onde_saiu') {
+    renderizarListaAgrupadaPorPlataforma(container, lista);
+    return;
+  }
+
+  container.classList.remove('lista-agrupada');
   container.innerHTML = '';
   lista.forEach((titulo) => container.appendChild(criarCardTitulo(titulo)));
+}
+
+// Agrupa os títulos em blocos por plataforma de "Onde saiu". Um título com
+// mais de uma plataforma marcada aparece repetido, uma vez em cada bloco —
+// é o comportamento mais correto (o título está de fato nos dois lugares).
+function renderizarListaAgrupadaPorPlataforma(container, lista) {
+  container.classList.add('lista-agrupada');
+  container.innerHTML = '';
+
+  const SEM_PLATAFORMA = 'Sem plataforma definida';
+  const grupos = new Map();
+
+  lista.forEach((titulo) => {
+    const plataformas = (titulo.ondeSaiu || []).length ? titulo.ondeSaiu : [SEM_PLATAFORMA];
+    plataformas.forEach((p) => {
+      if (!grupos.has(p)) grupos.set(p, []);
+      grupos.get(p).push(titulo);
+    });
+  });
+
+  const nomesGrupos = Array.from(grupos.keys()).sort((a, b) => {
+    if (a === SEM_PLATAFORMA) return 1;
+    if (b === SEM_PLATAFORMA) return -1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+
+  nomesGrupos.forEach((nome) => {
+    const secao = document.createElement('div');
+    secao.className = 'grupo-onde-saiu';
+
+    const titulo = document.createElement('h3');
+    titulo.className = 'grupo-titulo';
+    titulo.textContent = `${nome} (${grupos.get(nome).length})`;
+
+    const grid = document.createElement('div');
+    grid.className = 'grid-titulos';
+    grupos.get(nome).forEach((t) => grid.appendChild(criarCardTitulo(t)));
+
+    secao.appendChild(titulo);
+    secao.appendChild(grid);
+    container.appendChild(secao);
+  });
+}
+
+// Card simples com números gerais da biblioteca — sempre calculado sobre
+// TODOS os títulos (ignora filtros ativos), pra dar uma visão geral estável.
+function atualizarEstatisticas() {
+  const card = document.getElementById('estatisticas-card');
+  const todos = estado.titulos;
+
+  const total = todos.length;
+  const assistidos = todos.filter((t) => t.status === 'assistido').length;
+  const totalEpisodios = todos.reduce((soma, t) => soma + (t.episodiosVistos || 0), 0);
+  const notas = todos.map((t) => t.nota).filter((n) => n !== null && n !== undefined);
+  const notaMedia = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
+
+  card.innerHTML = `
+    <span>🎬 <strong>${total}</strong> ${total === 1 ? 'título' : 'títulos'}</span>
+    <span>✅ <strong>${assistidos}</strong> ${assistidos === 1 ? 'assistido' : 'assistidos'}</span>
+    <span>📺 <strong>${totalEpisodios}</strong> ${totalEpisodios === 1 ? 'episódio' : 'episódios'}</span>
+    ${notaMedia ? `<span>★ <strong>${notaMedia.toFixed(1)}</strong> média</span>` : ''}
+  `;
 }
 
 function criarCardTitulo(titulo) {
